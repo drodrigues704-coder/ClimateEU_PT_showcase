@@ -1,0 +1,178 @@
+{
+  "indicators": {
+    "precipitacao": {
+      "label": "Precipitação total anual",
+      "unit": "mm/ano"
+    },
+    "temp_media": {
+      "label": "Temperatura média anual",
+      "unit": "°C"
+    },
+    "amplitude_termica": {
+      "label": "Amplitude térmica média",
+      "unit": "°C"
+    },
+    "et0": {
+      "label": "ET0 (FAO Penman-Monteith)",
+      "unit": "mm/dia"
+    },
+    "humidade": {
+      "label": "Humidade relativa média",
+      "unit": "%"
+    },
+    "vento": {
+      "label": "Vento médio",
+      "unit": "m/s"
+    },
+    "radiacao": {
+      "label": "Radiação solar média",
+      "unit": "W/m²"
+    }
+  },
+  "nuts2": [
+    {
+      "codigo": "11",
+      "nuts2": "Norte"
+    },
+    {
+      "codigo": "15",
+      "nuts2": "Algarve"
+    },
+    {
+      "codigo": "19",
+      "nuts2": "Centro"
+    },
+    {
+      "codigo": "1A",
+      "nuts2": "Grande Lisboa"
+    },
+    {
+      "codigo": "1B",
+      "nuts2": "Península de Setúbal"
+    },
+    {
+      "codigo": "1C",
+      "nuts2": "Alentejo"
+    },
+    {
+      "codigo": "1D",
+      "nuts2": "Oeste e Vale do Tejo"
+    }
+  ],
+  "scenario_periods": {
+    "historico": [
+      "historico"
+    ],
+    "rcp45": [
+      "meados",
+      "fim"
+    ],
+    "rcp85": [
+      "meados",
+      "fim"
+    ]
+  },
+  "series": {
+    "11": "series/11.json",
+    "15": "series/15.json",
+    "19": "series/19.json",
+    "1A": "series/1A.json",
+    "1B": "series/1B.json",
+    "1C": "series/1C.json",
+    "1D": "series/1D.json",
+    "nacional": "series/nacional.json"
+  },
+  "raster": {
+    "precipitacao": {
+      "historico": {
+        "historico": "raster/precipitacao_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/precipitacao_rcp45_meados_isobands.geojson",
+        "fim": "raster/precipitacao_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/precipitacao_rcp85_meados_isobands.geojson",
+        "fim": "raster/precipitacao_rcp85_fim_isobands.geojson"
+      }
+    },
+    "temp_media": {
+      "historico": {
+        "historico": "raster/temp_media_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/temp_media_rcp45_meados_isobands.geojson",
+        "fim": "raster/temp_media_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/temp_media_rcp85_meados_isobands.geojson",
+        "fim": "raster/temp_media_rcp85_fim_isobands.geojson"
+      }
+    },
+    "amplitude_termica": {
+      "historico": {
+        "historico": "raster/amplitude_termica_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/amplitude_termica_rcp45_meados_isobands.geojson",
+        "fim": "raster/amplitude_termica_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/amplitude_termica_rcp85_meados_isobands.geojson",
+        "fim": "raster/amplitude_termica_rcp85_fim_isobands.geojson"
+      }
+    },
+    "et0": {
+      "historico": {
+        "historico": "raster/et0_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/et0_rcp45_meados_isobands.geojson",
+        "fim": "raster/et0_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/et0_rcp85_meados_isobands.geojson",
+        "fim": "raster/et0_rcp85_fim_isobands.geojson"
+      }
+    },
+    "humidade": {
+      "historico": {
+        "historico": "raster/humidade_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/humidade_rcp45_meados_isobands.geojson",
+        "fim": "raster/humidade_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/humidade_rcp85_meados_isobands.geojson",
+        "fim": "raster/humidade_rcp85_fim_isobands.geojson"
+      }
+    },
+    "vento": {
+      "historico": {
+        "historico": "raster/vento_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/vento_rcp45_meados_isobands.geojson",
+        "fim": "raster/vento_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/vento_rcp85_meados_isobands.geojson",
+        "fim": "raster/vento_rcp85_fim_isobands.geojson"
+      }
+    },
+    "radiacao": {
+      "historico": {
+        "historico": "raster/radiacao_historico_historico_isobands.geojson"
+      },
+      "rcp45": {
+        "meados": "raster/radiacao_rcp45_meados_isobands.geojson",
+        "fim": "raster/radiacao_rcp45_fim_isobands.geojson"
+      },
+      "rcp85": {
+        "meados": "raster/radiacao_rcp85_meados_isobands.geojson",
+        "fim": "raster/radiacao_rcp85_fim_isobands.geojson"
+      }
+    }
+  }
+}

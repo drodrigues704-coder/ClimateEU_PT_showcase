@@ -1,0 +1,261 @@
+/*
+===============================================================================
+WEBAPP — CORDEX PT — STYLE.CSS
+
+Estrutura de layout (cabeçalho fixo, sidebar + mapa, secções de painel,
+legenda, overlay de carregamento, banner de erro, modal "Sobre") adaptada
+de scripts/frontend/CSS/style.css do SPI_SPEI_scPDSI — mesma família
+tipográfica (IBM Plex, carregada via Google Fonts em index.html), cores e
+texto substituídos pela identidade CORDEX PT.
+===============================================================================
+*/
+
+:root {
+  /* Paleta "atlântico" — tons de azul/verde-água, associados a dados
+     climáticos (não o castanho-terra do SPI_SPEI, que era sobre seca).
+     --accent aproxima-se do tom intermédio das rampas de precipitação/
+     humidade (f1_config.js -> COLOR_RAMPS) sem repetir nenhuma cor de
+     classe real, para servir só de acento neutro de UI. */
+  --bg: #0b1620;
+  --panel-bg: #12222f;
+  --panel-border: #24394a;
+  --text: #e6eef4;
+  --text-dim: #86a0b3;
+  --accent: #3fa7c9;
+  --warning-bg: #7c4a03;
+  --warning-text: #ffe4b5;
+  --error-bg: #7f1d1d;
+
+  /* Tipografia — IBM Plex, três variantes com papéis distintos: corpo de
+     texto, títulos/labels de secção, e tudo o que é dado numérico/técnico
+     (valores de indicador, datas, unidades). */
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+#app-header {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+#app-header h1 { margin: 0; font-size: 1.1rem; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; }
+#app-subtitle { color: var(--text-dim); font-size: 0.85rem; }
+#btn-basemap, #btn-info {
+  width: auto;
+  margin-top: 0;
+  padding: 5px 12px;
+  white-space: nowrap;
+  align-self: center;
+}
+#btn-basemap { margin-left: auto; } /* empurra os dois botões para a direita do cabeçalho */
+
+#app {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  overflow: hidden;
+}
+
+#sidebar {
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--panel-border);
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+select, input[type="range"], button {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  font-family: var(--font-body);
+}
+button {
+  cursor: pointer;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+button:hover { border-color: var(--accent); }
+
+label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 6px; }
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.row label { flex: 1; margin-bottom: 0; }
+
+.note {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin: 8px 0 0;
+}
+
+#ctl-nuts2-wrapper { margin-top: 8px; }
+
+#raster-legend { margin-top: 8px; }
+.legend-bar {
+  height: 12px;
+  border-radius: 4px;
+}
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+
+#map {
+  background: var(--bg);
+}
+
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 32, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+/* [hidden] tem baixa especificidade — sem isto, o #loading-overlay acima
+   (seletor de ID) ganhava à regra [hidden]{display:none} do browser e o
+   overlay continuava a bloquear cliques mesmo com hidden="" definido. */
+#loading-overlay:not([hidden]) {
+  display: flex;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--panel-border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#error-banner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--error-bg);
+  color: #fecaca;
+  padding: 8px 16px;
+  border-radius: 6px;
+  z-index: 2100;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* =============================================================================
+   PAINEL "SOBRE"
+   ============================================================================= */
+
+#info-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 24px;
+}
+/* Mesma regra que o #loading-overlay (ver acima) — [hidden] tem baixa
+   especificidade e um seletor de ID com `display` ganha-lhe, deixando o
+   modal visível/a bloquear cliques mesmo com hidden="" definido. */
+#info-modal:not([hidden]) {
+  display: flex;
+}
+
+#info-modal-card {
+  position: relative;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+#info-modal-card h2 { margin-top: 0; font-family: var(--font-display); font-weight: 700; }
+#info-modal-card h3 { color: var(--accent); font-size: 0.95rem; margin: 18px 0 6px; font-family: var(--font-display); font-weight: 600; }
+#info-modal-card p { line-height: 1.5; font-size: 0.9rem; }
+#info-modal-card ul { font-size: 0.87rem; line-height: 1.5; padding-left: 20px; }
+#info-modal-card li { margin-bottom: 6px; }
+
+#btn-info-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin: 0;
+  border-radius: 50%;
+  line-height: 1;
+}
+
+.warning {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.78rem;
+  margin: 8px 0;
+}
+
+/* =============================================================================
+   POPUPS DO LEAFLET (tema escuro)
+   ============================================================================= */
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--panel-bg);
+  color: var(--text);
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CORDEX PT — Indicadores Climáticos</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="CSS/style.css" />
+</head>
+<body>
+
+<header id="app-header">
+  <h1>CORDEX PT — Indicadores Climáticos</h1>
+  <span id="app-subtitle">Portugal Continental — histórico e projeções RCP4.5/RCP8.5 (CORDEX EUR-11)</span>
+  <button id="btn-basemap" type="button" title="Trocar mapa de fundo">🗺 Mapa: Escuro</button>
+  <button id="btn-info" type="button" title="Sobre a app e os indicadores">ℹ Sobre</button>
+</header>
+
+<div id="app">
+
+  <aside id="sidebar">
+
+    <section class="panel">
+      <h2>Indicador</h2>
+      <select id="ctl-indicator">
+        <option value="precipitacao">Precipitação total anual</option>
+        <option value="temp_media">Temperatura média anual</option>
+        <option value="amplitude_termica">Amplitude térmica média</option>
+        <option value="et0">ET0 (FAO Penman-Monteith)</option>
+        <option value="humidade">Humidade relativa média</option>
+        <option value="vento">Vento médio</option>
+        <option value="radiacao">Radiação solar média</option>
+      </select>
+      <div id="raster-legend"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Cenário e período</h2>
+      <label>Cenário
+        <select id="ctl-scenario">
+          <option value="historico">Histórico</option>
+          <option value="rcp45">RCP4.5</option>
+          <option value="rcp85">RCP8.5</option>
+        </select>
+      </label>
+      <label>Período
+        <select id="ctl-period">
+          <option value="historico">1971–2005</option>
+        </select>
+      </label>
+      <div class="row">
+        <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental (média)</label>
+      </div>
+      <div class="row">
+        <label><input type="radio" name="region-mode" value="regiao"> Esta região</label>
+      </div>
+      <div id="ctl-nuts2-wrapper" hidden>
+        <select id="ctl-nuts2"><option value="">A carregar…</option></select>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Série temporal</h2>
+      <canvas id="chart-series" height="220"></canvas>
+    </section>
+
+  </aside>
+
+  <main id="map"></main>
+
+</div>
+
+<div id="loading-overlay" hidden><div class="spinner"></div></div>
+<div id="error-banner" hidden></div>
+
+<div id="info-modal" hidden>
+  <div id="info-modal-card">
+    <button id="btn-info-close" type="button" aria-label="Fechar">✕</button>
+
+    <h2>Sobre esta app</h2>
+    <p>
+      Indicadores climáticos para <b>Portugal Continental</b>, a partir das
+      simulações regionais <b>CORDEX EUR-11</b> (grelha de ~0.11°, cerca de
+      12 km). Mostra, num mapa, a média climatológica de 7 indicadores —
+      calculados a partir de 7 variáveis atmosféricas simuladas — para o
+      passado recente e para duas trajetórias de emissões futuras, e, por
+      NUTS II ou para o país inteiro, a evolução da série anual desse
+      indicador ao longo do tempo.
+    </p>
+
+    <h3>Os 7 indicadores</h3>
+    <ul>
+      <li><b>Precipitação total anual</b> (mm/ano) — soma da precipitação diária ao longo do ano.</li>
+      <li><b>Temperatura média anual</b> (°C) — média da temperatura do ar à superfície.</li>
+      <li><b>Amplitude térmica média</b> (°C) — diferença média entre a temperatura máxima e a mínima diárias, um indicador da variabilidade térmica do dia.</li>
+      <li><b>ET0 — evapotranspiração de referência</b> (mm/dia), pelo método FAO Penman-Monteith — a água que uma cultura de referência perderia por evaporação e transpiração; combina temperatura, humidade, vento e radiação.</li>
+      <li><b>Humidade relativa média</b> (%) — humidade relativa média do ar.</li>
+      <li><b>Vento médio</b> (m/s) — velocidade média do vento a 10 m de altura.</li>
+      <li><b>Radiação solar média</b> (W/m²) — radiação solar de onda curta recebida à superfície.</li>
+    </ul>
+
+    <h3>Os 3 cenários</h3>
+    <p>
+      <b>Histórico</b> (1971–2005) representa o clima passado recente,
+      simulado (não observado diretamente) para servir de referência.
+      <b>RCP4.5</b> e <b>RCP8.5</b> são duas trajetórias possíveis de
+      emissões de gases com efeito de estufa até 2100 — RCP4.5 assume uma
+      estabilização das emissões a meio do século; RCP8.5 assume uma
+      continuação do crescimento das emissões sem travão adicional (o
+      cenário mais quente dos dois). Nenhum dos dois é uma previsão — são
+      hipóteses de trabalho usadas em toda a literatura climática para
+      explorar um leque de futuros possíveis.
+    </p>
+
+    <h3>Os 5 períodos de climatologia</h3>
+    <p>
+      Cada combinação de cenário e período disponível no mapa é uma média
+      de longo prazo sobre uma janela de anos, não um único ano:
+    </p>
+    <ul>
+      <li><b>Histórico</b> — 1971–2005 (o único período do cenário Histórico).</li>
+      <li><b>RCP4.5, meados do século</b> — 2036–2065.</li>
+      <li><b>RCP4.5, fim do século</b> — 2071–2100.</li>
+      <li><b>RCP8.5, meados do século</b> — 2036–2065.</li>
+      <li><b>RCP8.5, fim do século</b> — 2071–2100.</li>
+    </ul>
+
+    <h3>Um aviso importante: o modelo regional não é o mesmo em todos os cenários</h3>
+    <p>
+      Estas simulações combinam sempre um modelo climático global (o
+      mesmo nos 3 cenários) com um <b>modelo climático regional</b> (RCM)
+      que "traduz" esse clima global para a escala da Península Ibérica.
+      O cenário <b>Histórico</b> e o cenário <b>RCP8.5</b> usam o
+      <b>mesmo</b> modelo regional (SMHI-RCA4) — por isso a diferença
+      entre os dois reflete, com confiança, só o sinal climático. O
+      cenário <b>RCP4.5</b>, no entanto, usa um modelo regional
+      <b>diferente</b> (KNMI-RACMO22E). Isto significa que comparar
+      Histórico com RCP4.5 mistura duas coisas — a mudança de clima
+      real e as diferenças próprias entre os dois modelos regionais —
+      pelo que essa comparação específica deve ser lida com mais cautela
+      do que a comparação Histórico → RCP8.5.
+    </p>
+
+    <h3>Duas simplificações no cálculo do ET0</h3>
+    <p>
+      O ET0 é calculado pelo método de referência da FAO (Penman-Monteith,
+      Allen et al. 1998), mas esta versão da app não dispõe de um modelo
+      de elevação do terreno, o que obriga a duas simplificações
+      deliberadas:
+    </p>
+    <ul>
+      <li>A radiação de céu limpo é estimada como uma fração fixa da radiação solar no topo da atmosfera, sem o ajuste habitual pela altitude de cada ponto — esse ajuste é descrito na própria literatura FAO como um efeito secundário.</li>
+      <li>A pressão atmosférica usada para converter humidade em pressão de vapor é a do nível do mar, igual em todo o território, em vez de variar com a altitude de cada ponto (mais baixa em zonas de montanha).</li>
+    </ul>
+    <p class="note">
+      Na prática, isto significa que o ET0 em zonas de montanha pode estar
+      ligeiramente subestimado ou sobrestimado face a um cálculo que
+      tivesse em conta a elevação real do terreno — o efeito é pequeno na
+      generalidade do território, mas mais visível nas serras.
+    </p>
+
+    <h3>Como ler o mapa e a série temporal</h3>
+    <p>
+      O mapa mostra a média espacial do indicador escolhido, para o
+      cenário e período escolhidos, como áreas coloridas (isobandas) —
+      não pontos de estações nem pixels individuais da grelha CORDEX. A
+      legenda junto ao seletor de indicador mostra a escala de cores em
+      uso. Em "Cenário e período" pode escolher ver a série temporal do
+      indicador para <b>Portugal Continental (média)</b> ou para
+      <b>esta região</b> — a região NUTS II selecionada no mapa.
+    </p>
+
+    <h3>Origem dos dados</h3>
+    <p>
+      Simulações <b>CORDEX EUR-11</b>, modelo global <b>ICHEC-EC-EARTH</b>
+      (ensemble r1i1p1), já ajustadas por viés na origem — este projeto
+      não aplica nenhuma recalibração estatística adicional aos dados
+      brutos, só o cálculo dos 7 indicadores acima a partir das 7
+      variáveis atmosféricas simuladas (temperatura máxima e mínima,
+      precipitação, humidade relativa, vento, radiação solar).
+    </p>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+<!-- "?v=..." força o browser a ir sempre buscar a versão mais recente
+     destes ficheiros, em vez de reutilizar uma cópia em cache — sem
+     isto, uma alteração a estes scripts só aparecia depois de o
+     utilizador limpar a cache manualmente. Subir este número sempre
+     que qualquer um destes ficheiros for alterado. -->
+<script src="js/f1_config.js?v=1"></script>
+<script src="js/f2_map.js?v=1"></script>
+<script src="js/f3_controls.js?v=1"></script>
+<script src="js/f4_raster.js?v=1"></script>
+<script src="js/f5_charts.js?v=1"></script>
+<script src="js/f6_ui.js?v=1"></script>
+<script src="js/f7_main.js?v=1"></script>
+
+</body>
+</html>
