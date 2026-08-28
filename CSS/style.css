@@ -69,14 +69,26 @@ body {
 }
 #btn-basemap { margin-left: auto; } /* empurra os dois botões para a direita do cabeçalho */
 
+/* Três colunas lado a lado: controlos | mapa | gráficos. Antes era
+   sidebar+mapa em cima e um único gráfico a toda a largura em baixo — com
+   o clique numa célula da grelha a ganhar o seu próprio painel (ver
+   #chart-column abaixo), passou a fazer mais sentido os dois gráficos
+   ficarem numa coluna própria ao lado do mapa, sempre visíveis os dois
+   sem disputar espaço com os controlos. Colunas laterais com largura fixa
+   (280px controlos / 400px gráficos — alargada de 300px a pedido do
+   utilizador depois de ver as barras dos gráficos demasiado estreitas em
+   ecrã real; o mapa abdica a diferença de largura, fica com o resto
+   (1fr), continua a maior das três). */
 #app {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 280px 1fr 400px;
+  grid-template-areas: "sidebar map charts";
   overflow: hidden;
 }
 
 #sidebar {
+  grid-area: sidebar;
   overflow-y: auto;
   padding: 12px;
   border-right: 1px solid var(--panel-border);
@@ -151,7 +163,71 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
 }
 
 #map {
+  grid-area: map;
   background: var(--bg);
+}
+
+/* Coluna direita: 2 painéis de gráfico empilhados (região selecionada +
+   célula clicada), cada um a dividir a altura disponível a meio — em vez
+   da largura total fixa (260px) de quando havia só 1 painel por baixo do
+   mapa. flex (não grid-template-rows) porque os 2 painéis devem repartir
+   o espaço por igual independentemente do conteúdo (o painel da célula
+   tem texto de aviso extra quando preenchido). */
+#chart-column {
+  grid-area: charts;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  border-left: 1px solid var(--panel-border);
+}
+
+.chart-panel {
+  flex: 1 1 0;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+/* Altura do gráfico dada pelo espaço flex restante do painel (em vez de
+   um valor fixo em px) — com maintainAspectRatio:false em f5_charts.js,
+   o Chart.js sincroniza o canvas com esta div; min-height:0 é necessário
+   para um filho flex poder encolher abaixo do tamanho do seu conteúdo
+   (omissão do flexbox é min-height:auto, que ignora o "flex:1" do pai). */
+.chart-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Painel 2 antes do primeiro clique — mesmo tom/discrição do resto dos
+   textos .note, só que a ocupar o espaço do gráfico até haver um clique.
+   :not([hidden]) obrigatório aqui — mesmo problema de especificidade do
+   #loading-overlay/#info-modal/#cell-chart-body acima: um seletor de
+   classe com `display` é regra de autor e ganha sempre à `[hidden]
+   {display:none}` da folha de estilo do browser, independentemente da
+   especificidade relativa — sem isto, .chart-placeholder ficava sempre
+   visível mesmo com o atributo hidden definido por renderChartForCell. */
+.chart-placeholder:not([hidden]) {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  padding: 12px 8px;
+}
+
+/* Mesmo problema de especificidade do #loading-overlay/#info-modal (ver
+   acima): um seletor de ID com `display` ganha sempre a `[hidden]{display:
+   none}` do browser, por isso o :not([hidden]) é obrigatório aqui — sem
+   ele, #cell-chart-body ficava sempre visível (display:flex) mesmo com o
+   atributo hidden ainda por remover. */
+#cell-chart-body:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 #loading-overlay {
@@ -258,4 +334,147 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
 .leaflet-popup-tip {
   background: var(--panel-bg);
   color: var(--text);
+}
+
+/* =============================================================================
+   RESPONSIVO — ecrãs estreitos (tablet/telemóvel)
+   ============================================================================= */
+
+/* #mobile-tabs existe sempre no DOM (ver index.html) mas só aparece abaixo
+   do breakpoint — esta regra fora do @media garante que o desktop nunca a
+   vê, sem o JS precisar de saber em que largura está. */
+#mobile-tabs { display: none; }
+
+/* Abaixo de ~1000px as 3 colunas lado a lado (280px sidebar + 400px
+   chart-column fixos, só o mapa é que cede largura) deixam de caber com
+   alguma folga para o mapa. Em vez do antigo empilhamento vertical dos 3
+   blocos (scroll infinito na página), navegação por separadores fixos tipo
+   app nativa: só 1 dos 3 painéis (#map/#sidebar/#chart-column) visível de
+   cada vez, trocado pela barra #mobile-tabs no fundo do ecrã — decisão
+   tomada com o utilizador. O separador ativo é espelhado em
+   <body data-mobile-tab="mapa|controlos|graficos"> por f6_ui.js
+   (setMobileTab), com "mapa" como omissão já no HTML (evita um flash sem
+   nenhum painel visível enquanto o JS ainda não correu). */
+@media (max-width: 1000px) {
+  body {
+    /* body já era display:flex; column (ver regras base) — #mobile-tabs
+       entra aqui como último filho desse flex, não como position:fixed:
+       como html/body já ocupam 100% da altura do ecrã e não há scroll a
+       nível de página neste modo, um filho flex no fim da coluna fica
+       visualmente "preso ao fundo" sem as armadilhas costumeiras do
+       position:fixed em mobile (barra de endereço a esconder/mostrar a
+       empurrar o layout, necessidade de gerir z-index face ao teclado
+       virtual). */
+    height: 100%;
+  }
+
+  #app {
+    /* Deixa de ser grid de 3 colunas — só 1 painel visível de cada vez,
+       cada um a ocupar a área toda do #app (ver regras abaixo), por isso
+       não há necessidade de grid-template-areas aqui. */
+    display: block;
+    position: relative;
+    overflow: hidden; /* o scroll passa a viver dentro de cada painel, não na página */
+  }
+
+  #sidebar,
+  #map,
+  #chart-column {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+  #sidebar { border-right: none; }
+  #chart-column { border-left: none; }
+
+  body[data-mobile-tab="mapa"] #map { display: block; }
+  body[data-mobile-tab="controlos"] #sidebar { display: block; }
+  body[data-mobile-tab="graficos"] #chart-column { display: flex; } /* #chart-column é flex-column mesmo no desktop, ver regra base */
+
+  /* Os 2 painéis de gráfico deixam de competir por espaço com mapa/
+     controlos (cada um tinha min-height:220px fixo, pensado para uma
+     coluna lateral estreita) — com #chart-column agora a ocupar o ecrã
+     inteiro no separador "Gráficos", o flex:1 1 0 da regra base já os
+     reparte por igual pela altura toda disponível; só a base min-height
+     precisa subir, para ficarem visivelmente maiores do que no desktop
+     como pedido, não apertados ao mínimo antigo. */
+  .chart-panel { min-height: 320px; }
+
+  /* --- Cabeçalho: não pode partir/cortar em telemóveis pequenos (~360–
+     400px de largura) --- */
+  #app-header {
+    flex-wrap: wrap;
+    row-gap: 6px;
+    padding: 8px 12px;
+  }
+  #app-header h1 {
+    font-size: 0.95rem;
+    flex: 1 1 auto;
+    min-width: 0; /* permite ao título quebrar linha em vez de forçar overflow horizontal (min-width:auto é a omissão em flex items) */
+  }
+  #app-subtitle {
+    order: 3;
+    flex-basis: 100%; /* linha própria, por baixo do título+botões, em vez de disputar espaço na mesma linha */
+    font-size: 0.72rem;
+  }
+  #btn-basemap, #btn-info {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* --- Alvos de toque confortáveis nos controlos (mín. ~44px, regra
+     Apple/Material) — no desktop os valores atuais (padding 6px 8px,
+     ~28px de altura) chegam bem para rato, não para dedo. --- */
+  #sidebar select,
+  #sidebar button {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  #sidebar .row { min-height: 44px; }
+  #sidebar .row label {
+    /* a label é o alvo de toque todo (envolve o <input radio> + o texto,
+       ver index.html) — display:flex + min-height dá-lhe a altura cheia
+       da row em vez de só a altura da linha de texto. */
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  #sidebar input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    margin-right: 8px;
+  }
+
+  /* --- Barra de separadores --- */
+  #mobile-tabs {
+    display: flex;
+    flex: 0 0 auto;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--panel-border);
+    /* espaço extra no fundo em iPhones com home indicator/notch — 0 nos
+       restantes dispositivos, sem custo nenhum. */
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .mobile-tab {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 52px; /* > 44px mínimo, é o alvo de navegação principal */
+    margin-top: 0;
+    padding: 6px 4px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: var(--text-dim);
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .mobile-tab-icon { font-size: 1.2rem; line-height: 1; }
+  .mobile-tab[aria-selected="true"] { color: var(--accent); }
 }

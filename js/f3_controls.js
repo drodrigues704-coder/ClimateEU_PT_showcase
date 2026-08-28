@@ -33,7 +33,11 @@
   }
 
   window.APP.populateControls = function populateControls(nuts2Regions) {
+    // O HTML já traz os 7 <option> de ctl-indicator hardcoded (para haver
+    // algo visível antes do JS correr) — sem limpar primeiro, cada arranque
+    // duplicava-os todos (14 em vez de 7, ver Task 23).
     const indicatorSelect = document.getElementById("ctl-indicator");
+    indicatorSelect.innerHTML = "";
     Object.entries(window.APP.INDICATORS).forEach(([key, meta]) => {
       const opt = document.createElement("option");
       opt.value = key;
@@ -41,7 +45,9 @@
       indicatorSelect.appendChild(opt);
     });
 
+    // Mesma lógica para o placeholder "A carregar…" de ctl-nuts2.
     const nuts2Select = document.getElementById("ctl-nuts2");
+    nuts2Select.innerHTML = "";
     nuts2Regions.forEach((region) => {
       const opt = document.createElement("option");
       opt.value = region.codigo;
