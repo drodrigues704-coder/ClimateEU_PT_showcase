@@ -81,7 +81,15 @@
       cells: "cellsPane",
     };
 
-    fetch("data/nuts2.geojson")
+    // data/nuts2_display.geojson — versão simplificada de data/nuts2.geojson
+    // (319 026 → 6 342 vértices, mesmas 7 features/propriedades, mesmo CRS
+    // EPSG:4326), gerada por spatial-data-engineer para corrigir um bug de
+    // performance crítico: o ficheiro original, nunca simplificado, fazia o
+    // zoom do mapa Leaflet bloquear o browser 60-80s (medido/isolado
+    // experimentalmente). Usada tanto para o contorno visível como para a
+    // geometria de focusRegion/setRegionMask abaixo — ver notas aí sobre a
+    // validação visual feita com esta geometria simplificada.
+    fetch("data/nuts2_display.geojson")
       .then((r) => r.json())
       .then((geojson) => {
         window.APP.nuts2Layer = L.geoJSON(geojson, {
@@ -95,7 +103,7 @@
         // escolhida sem destaque/máscara até à próxima mudança de seletor.
         nuts2ReadyCallbacks.forEach((cb) => cb());
       })
-      .catch((err) => console.error("Falha a carregar nuts2.geojson:", err));
+      .catch((err) => console.error("Falha a carregar nuts2_display.geojson:", err));
 
     loadCellsLayer(map);
 
@@ -149,7 +157,7 @@
   };
 
   // Regista um callback chamado quando window.APP.nuts2Layer fica pronto
-  // (fetch de data/nuts2.geojson resolvido) — ver nota acima sobre a
+  // (fetch de data/nuts2_display.geojson resolvido) — ver nota acima sobre a
   // condição de corrida com focusRegion/setRegionMask.
   window.APP.onNuts2Ready = function onNuts2Ready(callback) {
     nuts2ReadyCallbacks.push(callback);
@@ -254,6 +262,14 @@
   // graus) continua válido para uma região legitimamente multi-polígono
   // (ex. duas ilhas de área semelhante), caso que não existe nos dados
   // atuais mas que um limiar fixo de bounding-box não cobriria tão bem.
+  //
+  // Reverificado após a troca para data/nuts2_display.geojson (versão
+  // simplificada usada em runtime desde a correção de performance do
+  // zoom — ver initMap): a contagem de polígonos por região muda com a
+  // simplificação (ex. Grande Lisboa passa de 39 para 32), mas o
+  // resultado do filtro não — continua a sobrar exatamente 1 anel acima
+  // de 1% da área do maior em cada uma das 7 regiões, pelo que o filtro
+  // e a máscara continuam corretos com a geometria simplificada.
   function regionOuterRings(feature) {
     const geom = feature.geometry;
     const polygons = geom.type === "Polygon" ? [geom.coordinates] : geom.coordinates;

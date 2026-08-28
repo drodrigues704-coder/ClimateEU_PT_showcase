@@ -56,7 +56,25 @@
       currentLayer = L.geoJSON(geojson, {
         filter: window.APP.isPolygonFeature,
         pane: window.APP.PANES.raster,
-        style: (feature) => ({ fillColor: feature.properties.fill, color: feature.properties.fill, weight: 0, fillOpacity: 0.75 }),
+        // weight: 0 (sem stroke) deixava uma fresta fina e visível na
+        // costura entre <path> SVG vizinhos — o anti-aliasing de cada
+        // polígono não "cose" com o do vizinho sem um traço a cobri-la.
+        // weight: 1 com color igual a fillColor desenha um contorno da
+        // mesma cor do preenchimento — invisível como "linha" (não
+        // introduz uma cor nova), mas fecha a fresta entre polígonos
+        // adjacentes; fillOpacity mantém-se a 0.75 (decisão de design
+        // intencional, deixa ver o basemap por baixo). opacity (do
+        // stroke) igualada a fillOpacity — sem isto o Leaflet usa 1.0 por
+        // omissão, o que desenhava um anel ligeiramente mais saturado que
+        // o preenchimento à volta de cada polígono (achado do
+        // code-reviewer).
+        style: (feature) => ({
+          fillColor: feature.properties.fill,
+          color: feature.properties.fill,
+          weight: 1,
+          opacity: 0.75,
+          fillOpacity: 0.75,
+        }),
       }).addTo(window.APP.map);
       // Sem bringToFront(): rasterPane tem o z-index mais baixo dos 4
       // panes fixos (ver initMap em f2_map.js), por isso o contorno NUTS

@@ -64,7 +64,7 @@
       await window.APP.renderChartForCell(sel.indicator, lastCellId);
     });
 
-    // nuts2.geojson carrega de forma assíncrona (ver f2_map.js::initMap) —
+    // nuts2_display.geojson carrega de forma assíncrona (ver f2_map.js::initMap) —
     // se o utilizador mudar para "Esta região" antes desse fetch terminar,
     // focusRegion/setRegionMask saem em silêncio (guarda de nuts2Layer) e
     // nada os volta a chamar até à próxima mudança de seletor. Reaplica a
