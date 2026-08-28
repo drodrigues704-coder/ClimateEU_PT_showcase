@@ -1,6 +1,6 @@
 # ClimateEU PT — Projeções Climáticas Regionais
 
-<!-- Demo: https://drodrigues704-coder.github.io/ClimateEU_PT_showcase/ (ativar GitHub Pages neste repositório antes de publicar este link) -->
+**Demo:** https://drodrigues704-coder.github.io/ClimateEU_PT_showcase/
 
 Atlas de indicadores climáticos para **Portugal Continental**, a partir do
 downscaling estatístico **ClimateEU** (rede neuronal treinada sobre um
