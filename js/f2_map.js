@@ -8,9 +8,8 @@
   let focusedRegionCode = null;
 
   // O contorno segue o mapa de fundo: branco desaparecia no basemap claro.
-  const NUTS2_OUTLINE_COLORS = { dark: "#ffffff", light: "#1b2a36" };
   const nuts2DefaultStyle = () => ({
-    color: NUTS2_OUTLINE_COLORS[currentBasemapKey],
+    color: window.APP.BASEMAPS[currentBasemapKey].outline,
     weight: 1.5,
     fillOpacity: 0,
     opacity: 0.6,
@@ -50,10 +49,13 @@
   let nuts2ReadyCallbacks = [];
 
   function buildBasemapLayer(key) {
-    const cfg = window.APP.BASEMAPS[key];
-    // Esri Canvas (ArcGIS REST) não usa {s} — sem subdomains. Zoom nativo
-    // vai até 16; maxZoom 19 deixa o Leaflet reescalar acima disso.
-    return L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: 19, maxNativeZoom: 16 });
+    // Um grupo: o híbrido tem 2 camadas de tiles (satélite e nomes), e sair dele
+    // tem de remover as duas.
+    return L.layerGroup(
+      window.APP.BASEMAPS[key].tiles.map(({ url, attribution, maxNativeZoom }) =>
+        L.tileLayer(url, { attribution, maxZoom: 19, maxNativeZoom })
+      )
+    );
   }
 
   window.APP.initMap = function initMap() {
@@ -253,19 +255,17 @@
 
   window.APP.getBasemap = () => currentBasemapKey;
 
-  window.APP.toggleBasemap = function toggleBasemap() {
-    currentBasemapKey = currentBasemapKey === "dark" ? "light" : "dark";
+  window.APP.setBasemap = function setBasemap(key) {
+    currentBasemapKey = key;
     window.APP.map.removeLayer(basemapLayer);
-    basemapLayer = buildBasemapLayer(currentBasemapKey);
+    basemapLayer = buildBasemapLayer(key);
     basemapLayer.addTo(window.APP.map);
-    basemapLayer.bringToBack();
-    document.documentElement.style.setProperty("--basemap-land", window.APP.BASEMAPS[currentBasemapKey].land);
+    document.documentElement.style.setProperty("--basemap-land", window.APP.BASEMAPS[key].land);
     if (window.APP.nuts2Layer) {
       window.APP.nuts2Layer.eachLayer((layer) => {
         if (layer.feature.properties.codigo !== focusedRegionCode) layer.setStyle(nuts2DefaultStyle());
       });
     }
-    return currentBasemapKey;
   };
 
   // Reflete a seleção de região no mapa: destaca o contorno da região

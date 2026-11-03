@@ -38,22 +38,69 @@ window.APP = {
   },
   SCENARIO_LABELS: { historico: "Histórico", ssp245: "SSP2-4.5", ssp585: "SSP5-8.5" },
 
-  // Basemaps Esri Canvas (gratuitos, sem chave) — "Mapa: Escuro"/"Mapa:
-  // Claro", mesmo padrão do Calor_Frio/SPI_SPEI (botão único a alternar).
-  // A CARTO usada antes exigia agora API key (endpoint raster anónimo foi
-  // descontinuado — pedidos sem chave devolvem um tile com marca de água
-  // "API key required"). Estes tiles ArcGIS REST vão até zoom nativo 16;
-  // maxZoom 19 deixa o Leaflet reescalar acima disso (maxNativeZoom).
+  // Mapas de fundo gratuitos e sem chave. A CARTO usada antes exigia agora API
+  // key (endpoint raster anónimo foi descontinuado — pedidos sem chave devolvem
+  // um tile com marca de água "API key required"). `param` é o valor no endereço
+  // da página; `land`, a cor típica da terra nos tiles, usada nas amostras da
+  // legenda; `outline`, a cor do contorno NUTS II que se lê sobre este fundo.
+  // maxNativeZoom é o zoom real dos tiles; acima dele o Leaflet reescala.
   BASEMAPS: {
     dark: {
-      land: "#414143", // cor da terra nos tiles, usada nas amostras da legenda
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-      attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
+      label: "Mapa escuro",
+      param: "escuro",
+      land: "#414143",
+      outline: "#ffffff",
+      tiles: [
+        {
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+          attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
+          maxNativeZoom: 16,
+        },
+      ],
     },
     light: {
+      label: "Mapa claro",
+      param: "claro",
       land: "#efefef",
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-      attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
+      outline: "#1b2a36",
+      tiles: [
+        {
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+          attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
+          maxNativeZoom: 16,
+        },
+      ],
+    },
+    // Satélite com limites e nomes por cima.
+    hybrid: {
+      label: "Híbrido (satélite)",
+      param: "hibrido",
+      land: "#806b42",
+      outline: "#ffffff",
+      tiles: [
+        {
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+          maxNativeZoom: 18,
+        },
+        {
+          url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          maxNativeZoom: 18,
+        },
+      ],
+    },
+    osm: {
+      label: "OpenStreetMap",
+      param: "osm",
+      land: "#f2efe9",
+      outline: "#1b2a36",
+      tiles: [
+        {
+          url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxNativeZoom: 19,
+        },
+      ],
     },
   },
 

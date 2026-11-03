@@ -24,10 +24,6 @@
     document.getElementById("error-banner").hidden = true;
   };
 
-  window.APP.updateBasemapButton = function updateBasemapButton() {
-    document.getElementById("btn-basemap").textContent = window.APP.getBasemap() === "dark" ? "Mapa claro" : "Mapa escuro";
-  };
-
   function wireInfoModal() {
     const modal = document.getElementById("info-modal");
     const openButton = document.getElementById("btn-info");
@@ -52,9 +48,10 @@
   }
 
   window.APP.wireChrome = function wireChrome() {
-    document.getElementById("btn-basemap").addEventListener("click", () => {
-      window.APP.toggleBasemap();
-      window.APP.updateBasemapButton();
+    const basemapSelect = document.getElementById("ctl-basemap");
+    Object.entries(window.APP.BASEMAPS).forEach(([key, { label }]) => basemapSelect.add(new Option(label, key)));
+    basemapSelect.addEventListener("change", () => {
+      window.APP.setBasemap(basemapSelect.value);
       window.APP.syncUrl();
     });
     wireInfoModal();

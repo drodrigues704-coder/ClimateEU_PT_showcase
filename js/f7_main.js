@@ -44,7 +44,7 @@
       params.set("per", sel.period);
     }
     if (sel.nuts2Code) params.set("reg", sel.nuts2Code);
-    if (window.APP.getBasemap() === "light") params.set("mapa", "claro");
+    if (window.APP.getBasemap() !== "dark") params.set("mapa", window.APP.BASEMAPS[window.APP.getBasemap()].param);
     if (lastCell) params.set("ponto", lastCell.id);
 
     const map = window.APP.map;
@@ -92,7 +92,6 @@
     // Depois de initMap(): setMobileTab (chamada dentro de wireMobileTabs)
     // já chama window.APP.map.invalidateSize(), precisa do mapa a existir.
     window.APP.wireMobileTabs();
-    window.APP.updateBasemapButton();
 
     let catalog;
     try {
@@ -109,9 +108,10 @@
 
     window.APP.populateControls(catalog.nuts2);
     window.APP.applySelection(urlState);
-    if (urlState.basemap === "claro") {
-      window.APP.toggleBasemap();
-      window.APP.updateBasemapButton();
+    const sharedBasemap = Object.keys(window.APP.BASEMAPS).find((key) => window.APP.BASEMAPS[key].param === urlState.basemap);
+    if (sharedBasemap) {
+      window.APP.setBasemap(sharedBasemap);
+      document.getElementById("ctl-basemap").value = sharedBasemap;
     }
 
     const regionName = (code) => catalog.nuts2.find((region) => region.codigo === code)?.nuts2 ?? "Portugal Continental";

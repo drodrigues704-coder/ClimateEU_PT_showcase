@@ -16,7 +16,7 @@ texto substituídos pela identidade ClimateEU PT.
      --accent é só um acento neutro de UI: as cores dos dados vêm de
      color_scales em catalog.json. */
   color-scheme: dark;
-  --basemap-land: #414143; /* basemap inicial; toggleBasemap atualiza-o (f2_map.js) */
+  --basemap-land: #414143; /* basemap inicial; setBasemap atualiza-o (f2_map.js) */
   --bg: #0b1620;
   --panel-bg: #12222f;
   --panel-border: #24394a;
@@ -64,14 +64,14 @@ body {
 }
 #app-header h1 { margin: 0; font-size: 1.1rem; font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; }
 #app-subtitle { color: var(--text-dim); font-size: 0.85rem; }
-#btn-basemap, #btn-info {
+#ctl-basemap, #btn-info {
   width: auto;
   margin-top: 0;
   padding: 5px 12px;
   white-space: nowrap;
   align-self: center;
 }
-#btn-basemap { margin-left: auto; } /* empurra os dois botões para a direita do cabeçalho */
+#ctl-basemap { margin-left: auto; } /* empurra os dois botões para a direita do cabeçalho */
 
 /* Três colunas lado a lado: controlos | mapa | gráficos. Antes era
    sidebar+mapa em cima e um único gráfico a toda a largura em baixo — com
@@ -510,7 +510,7 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   }
   /* Sem subtítulo: em telemóvel o cabeçalho gastava 113 px de altura ao mapa. */
   #app-subtitle { display: none; }
-  #btn-basemap, #btn-info {
+  #ctl-basemap, #btn-info {
     min-height: 44px;
     padding: 8px 10px;
     font-size: 0.8rem;
