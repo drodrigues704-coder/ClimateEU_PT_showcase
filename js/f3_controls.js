@@ -28,6 +28,7 @@
       periodSelect.appendChild(opt);
     });
     periodSelect.disabled = allowed.length === 1;
+    document.getElementById("scenario-hint").textContent = window.APP.SCENARIO_HINTS[scenario];
   }
 
   function refreshRegionVisibility() {

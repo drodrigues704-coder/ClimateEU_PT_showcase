@@ -15,8 +15,8 @@ window.APP = {
     precipitacao: { label: "Precipitação total anual", unit: "mm/ano" },
     temp_media: { label: "Temperatura média anual", unit: "°C", legendNote: "Inclui correção local de altitude (DEM)." },
     amplitude_termica: { label: "Amplitude térmica média", unit: "°C", legendNote: "Amplitude diurna: Tmax menos Tmin." },
-    et0: { label: "ET0 (Hargreaves)", unit: "mm/dia" },
-    defice_hidrico: { label: "Défice hídrico climático", unit: "mm/ano" },
+    et0: { label: "ET0 (Hargreaves)", unit: "mm/dia", legendNote: "Evapotranspiração de referência: a água que uma cultura de referência perderia, estimada a partir da temperatura." },
+    defice_hidrico: { label: "Défice hídrico climático", unit: "mm/ano", legendNote: "Água em falta ao longo do ano: a procura evaporativa acima da precipitação." },
     graus_dia_5: { label: "Graus-dia acima de 5°C", unit: "°C·dia/ano", legendNote: "Soma, ao longo do ano, dos graus acima de 5 °C em cada dia: um dia a 15 °C conta 10." },
     graus_dia_18: { label: "Graus-dia acima de 18°C", unit: "°C·dia/ano", legendNote: "Soma, ao longo do ano, dos graus acima de 18 °C em cada dia: um dia a 25 °C conta 7. Procura potencial de arrefecimento, não consumo." },
     dias_sem_geada: { label: "Dias sem geada", unit: "dias/ano", legendNote: "Mais escuro = mais geada. Valores estimados, não contagens." },
@@ -37,6 +37,11 @@ window.APP = {
     fim: "2071–2100",
   },
   SCENARIO_LABELS: { historico: "Histórico", ssp245: "SSP2-4.5", ssp585: "SSP5-8.5" },
+  SCENARIO_HINTS: {
+    historico: "Clima passado recente, a referência para comparar.",
+    ssp245: "Trajetória intermédia de emissões. É uma hipótese, não uma previsão.",
+    ssp585: "Emissões a crescer sem travão adicional, o cenário mais quente. É uma hipótese, não uma previsão.",
+  },
 
   // Mapas de fundo gratuitos e sem chave. A CARTO usada antes exigia agora API
   // key (endpoint raster anónimo foi descontinuado — pedidos sem chave devolvem
@@ -129,6 +134,6 @@ window.APP = {
     ["Faro", 37.016, -7.935],
   ],
 
-  PORTUGAL_CENTER: [39.6, -8.0],
-  PORTUGAL_ZOOM: 7,
+  // Extensão de Portugal Continental em nuts2_display.geojson.
+  PORTUGAL_BOUNDS: [[36.962, -9.517], [42.154, -6.189]],
 };

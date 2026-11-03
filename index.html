@@ -53,6 +53,7 @@
           <option value="ssp585">SSP5-8.5</option>
         </select>
       </label>
+      <p id="scenario-hint" class="note"></p>
       <label>Período
         <select id="ctl-period">
           <option value="historico">1961–1990</option>
@@ -61,9 +62,9 @@
     </section>
 
     <section class="panel">
-      <h2>Região dos gráficos</h2>
+      <h2>Região</h2>
       <div class="row">
-        <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental (média)</label>
+        <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental</label>
       </div>
       <div class="row">
         <label><input type="radio" name="region-mode" value="regiao"> Uma região NUTS II</label>
@@ -261,10 +262,11 @@
     <p>
       O mapa mostra a média espacial do indicador escolhido, para o
       cenário e período escolhidos, como áreas coloridas (isobandas) —
-      não pontos de estações nem pixels individuais da grelha. A legenda
+      não pontos de estações nem pixels individuais da grelha. Ao escolher
+      uma região NUTS II, o mapa mostra só essa região e fica preso a ela. A legenda
       junto ao seletor de indicador mostra as classes em uso, iguais em
-      todos os cenários. Em "Região dos gráficos" pode escolher ver o
-      gráfico do indicador para <b>Portugal Continental (média)</b> ou
+      todos os cenários. Em "Região" pode escolher ver o
+      gráfico do indicador para <b>Portugal Continental</b> ou
       para <b>uma região NUTS II</b>, escolhida no seletor da barra
       lateral, não por clique no mapa. O endereço da página guarda a vista
       atual, para a poder partilhar. O gráfico mostra barras agrupadas por período, não
@@ -306,13 +308,13 @@
      Cache-Control: no-store para todo o frontend estático; o
      export_showcase.py substitui "?v=1" por um hash do conteúdo atual
      dos .js de cada vez que exporta. -->
-<script src="js/f1_config.js?v=dbb4ba412c"></script>
-<script src="js/f2_map.js?v=dbb4ba412c"></script>
-<script src="js/f3_controls.js?v=dbb4ba412c"></script>
-<script src="js/f4_raster.js?v=dbb4ba412c"></script>
-<script src="js/f5_charts.js?v=dbb4ba412c"></script>
-<script src="js/f6_ui.js?v=dbb4ba412c"></script>
-<script src="js/f7_main.js?v=dbb4ba412c"></script>
+<script src="js/f1_config.js?v=992627dd3e"></script>
+<script src="js/f2_map.js?v=992627dd3e"></script>
+<script src="js/f3_controls.js?v=992627dd3e"></script>
+<script src="js/f4_raster.js?v=992627dd3e"></script>
+<script src="js/f5_charts.js?v=992627dd3e"></script>
+<script src="js/f6_ui.js?v=992627dd3e"></script>
+<script src="js/f7_main.js?v=992627dd3e"></script>
 
 </body>
 </html>

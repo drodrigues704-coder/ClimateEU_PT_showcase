@@ -170,7 +170,7 @@
       if (!series) throw new Error(`${endpointPath}: sem dados de ${indicator}`);
       if (request !== latestRequest[slot]) return null;
 
-      // Devolve a série mesmo sem biblioteca: o valor no popup não precisa dela.
+      // Devolve a série mesmo sem biblioteca: o valor no cartão do ponto não precisa dela.
       if (window.Chart) {
         drawChart(series, indicator, slot, placeName);
         setChartError(slot, null);

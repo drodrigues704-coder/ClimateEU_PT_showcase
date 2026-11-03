@@ -95,14 +95,11 @@
           fillOpacity: RASTER_FILL_OPACITY,
         }),
       }).addTo(window.APP.map);
-      // Sem bringToFront(): rasterPane tem o z-index mais baixo dos 4
-      // panes fixos (ver initMap em f2_map.js), por isso o contorno NUTS
-      // II, a máscara de região e a grelha de células ficam sempre por
-      // cima independentemente de quando este fetch assíncrono resolve —
-      // antes dos panes, este bringToFront() (chamado sempre que o raster
-      // muda, mesmo sem mudar de região) enterrava a máscara de região
-      // sempre que corria depois de setRegionMask() no mesmo refresh()
-      // (achado real, ver f2_map.js::initMap).
+      // Sem bringToFront(): rasterPane tem o z-index mais baixo dos panes fixos
+      // (ver initMap em f2_map.js), por isso o contorno NUTS II e o ponto
+      // escolhido ficam sempre por cima, seja qual for a ordem dos fetches. O
+      // recorte da região (setRegionClip) aplica-se ao grupo SVG do pane, por
+      // isso continua válido quando esta camada é substituída.
 
       renderLegend(indicator, scenario, period);
     } catch (err) {

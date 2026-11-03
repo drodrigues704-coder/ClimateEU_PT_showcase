@@ -64,9 +64,18 @@
       summaryButton.setAttribute("aria-expanded", String(!legend.hidden));
     });
 
-    // O botão vem dentro do popup do Leaflet, criado depois deste arranque.
+    // Os botões vêm dentro do cartão do ponto, reescrito a cada consulta.
     document.addEventListener("click", (e) => {
-      if (e.target.closest(".popup-charts")) window.APP.setMobileTab("graficos");
+      if (e.target.closest(".cell-card-charts")) {
+        window.APP.setMobileTab("graficos");
+        // Em ecrãs baixos, o gráfico do ponto fica abaixo do da região.
+        requestAnimationFrame(() => document.getElementById("chart-panel-cell").scrollIntoView());
+      }
+      if (e.target.closest(".cell-card-close")) {
+        // Fechado por quem o lê: mudar de indicador não o volta a abrir.
+        window.APP.cellCardDismissed = true;
+        window.APP.hideCellCard();
+      }
     });
   };
 
