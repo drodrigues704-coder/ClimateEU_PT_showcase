@@ -107,6 +107,7 @@
     if (tab === "mapa") {
       requestAnimationFrame(() => {
         if (window.APP.map) window.APP.map.invalidateSize();
+        if (window.APP.invalidateCompare) window.APP.invalidateCompare();
       });
     }
 

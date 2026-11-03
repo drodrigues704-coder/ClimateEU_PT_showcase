@@ -729,17 +729,85 @@ details.warning summary { cursor: pointer; }
   .spinner { animation-duration: 3s; }
 }
 
-/* Os tiles sobrepõem-se meio píxel: com zoom fracionário e em ecrãs de alta
-   densidade, o arredondamento deixava linhas finas entre eles. */
-.leaflet-tile-container img.leaflet-tile {
-  width: 256.5px !important;
-  height: 256.5px !important;
-}
+/* Em ecrãs com escala (125%, 150%), sem isto ficam linhas finas entre os tiles.
+   Medido com Playwright: alargar os tiles também as criava com escala de 100%. */
+.leaflet-tile-loaded { outline: 1px solid transparent; }
 
 /* Telemóvel deitado: resumo a um canto, para o mapa aproveitar a altura. */
 @media (max-width: 1000px) and (max-height: 500px) {
   body[data-mobile-tab="mapa"] #map-summary {
     left: auto;
     width: 300px;
+  }
+}
+
+/* =============================================================================
+   PESQUISA, EXPORTAÇÃO E COMPARAÇÃO
+   ============================================================================= */
+
+#ctl-place {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+#ctl-place::placeholder { color: var(--text-dim); }
+#place-status { margin: 0 0 8px; }
+#place-status:empty { display: none; }
+
+.btn-csv {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+.chart-panel > .btn-csv { align-self: flex-start; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+#map-compare { display: none; background: var(--bg); }
+.compare-caption {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+@media (min-width: 1001px) {
+  body.comparing #app {
+    grid-template-columns: 280px 1fr 1fr 340px;
+    grid-template-areas: "sidebar map compare charts";
+  }
+  body.comparing #map-compare {
+    display: block;
+    grid-area: compare;
+    border-left: 2px solid var(--panel-border);
+  }
+}
+
+/* Lado a lado também em telemóvel: o país é alto e estreito. */
+@media (max-width: 1000px) {
+  body.comparing[data-mobile-tab="mapa"] #map,
+  body.comparing[data-mobile-tab="mapa"] #map-compare {
+    display: block;
+    float: left;
+    width: 50%;
+    height: 100%;
+  }
+  .leaflet-top.leaflet-right .compare-caption { margin-top: 64px; }
+  #ctl-place { min-height: 44px; font-size: 1rem; }
+  .btn-csv { min-height: 44px; }
+  #sidebar input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    margin-right: 8px;
   }
 }

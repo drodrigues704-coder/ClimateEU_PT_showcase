@@ -63,6 +63,11 @@
 
     <section class="panel">
       <h2>Região</h2>
+      <label>Procurar concelho
+        <input id="ctl-place" type="search" list="place-list" autocomplete="off" placeholder="Ex.: Coimbra…">
+      </label>
+      <datalist id="place-list"></datalist>
+      <p id="place-status" class="note" aria-live="polite"></p>
       <div class="row">
         <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental</label>
       </div>
@@ -76,9 +81,25 @@
       </div>
     </section>
 
+    <section class="panel">
+      <h2>Comparar</h2>
+      <div class="row">
+        <label><input id="ctl-compare" type="checkbox"> Mostrar outro cenário ao lado</label>
+      </div>
+      <div id="ctl-compare-wrapper" hidden>
+        <label>Cenário
+          <select id="ctl-compare-scenario"></select>
+        </label>
+        <label>Período
+          <select id="ctl-compare-period"></select>
+        </label>
+      </div>
+    </section>
+
   </aside>
 
   <main id="map"></main>
+  <div id="map-compare" aria-label="Mapa de comparação, segue o mapa principal"></div>
 
   <!-- Só em ecrãs estreitos (CSS/style.css): o mapa abre sozinho nesse
        separador, por isso tem de dizer o que mostra e trazer a legenda. -->
@@ -99,6 +120,7 @@
         <canvas id="chart-series" role="img" aria-label="Gráfico da região selecionada"></canvas>
       </div>
       <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; os períodos seguintes mostram como SSP2-4.5 e SSP5-8.5 divergem.</p>
+      <button id="btn-csv" class="btn-csv" type="button" disabled>Descarregar CSV (regiões NUTS II)</button>
     </section>
 
     <section id="chart-panel-cell" class="panel chart-panel">
@@ -269,7 +291,8 @@
       gráfico do indicador para <b>Portugal Continental</b> ou
       para <b>uma região NUTS II</b>, escolhida no seletor da barra
       lateral, não por clique no mapa. O endereço da página guarda a vista
-      atual, para a poder partilhar. O gráfico mostra barras agrupadas por período, não
+      atual, para a poder partilhar. Em "Comparar" pode ver outro cenário ao
+      lado, com as mesmas classes de cor; esse mapa segue o principal. O gráfico mostra barras agrupadas por período, não
       uma linha — são climatologias discretas de 30 anos, não uma série
       anual contínua.
     </p>
@@ -308,13 +331,14 @@
      Cache-Control: no-store para todo o frontend estático; o
      export_showcase.py substitui "?v=1" por um hash do conteúdo atual
      dos .js de cada vez que exporta. -->
-<script src="js/f1_config.js?v=992627dd3e"></script>
-<script src="js/f2_map.js?v=992627dd3e"></script>
-<script src="js/f3_controls.js?v=992627dd3e"></script>
-<script src="js/f4_raster.js?v=992627dd3e"></script>
-<script src="js/f5_charts.js?v=992627dd3e"></script>
-<script src="js/f6_ui.js?v=992627dd3e"></script>
-<script src="js/f7_main.js?v=992627dd3e"></script>
+<script src="js/f1_config.js?v=cadff88450"></script>
+<script src="js/f2_map.js?v=cadff88450"></script>
+<script src="js/f3_controls.js?v=cadff88450"></script>
+<script src="js/f4_raster.js?v=cadff88450"></script>
+<script src="js/f5_charts.js?v=cadff88450"></script>
+<script src="js/f6_ui.js?v=cadff88450"></script>
+<script src="js/f7_main.js?v=cadff88450"></script>
+<script src="js/f8_compare.js?v=cadff88450"></script>
 
 </body>
 </html>

@@ -49,8 +49,7 @@
   let cellMarker = null;
   let cellsLoadFailed = false;
   const CELLS_UNAVAILABLE_MESSAGE = "Não foi possível carregar os pontos do mapa. Recarrega a página para os poderes consultar.";
-  let regionClipShape = null;
-  let regionClipElement = null;
+  let regionClip = null;
   let focusedRings = null;
   let cameraBounds = null;
   let needsFraming = false;
@@ -68,6 +67,8 @@
       )
     );
   }
+
+  window.APP.buildBasemapLayer = buildBasemapLayer;
 
   window.APP.initMap = function initMap() {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -329,6 +330,22 @@
     return nearest;
   }
 
+  // Ponto da grelha mais próximo de um lugar, sem o filtro da região selecionada:
+  // a pesquisa de concelhos pode levar a outra região.
+  window.APP.nearestCellAnywhere = function nearestCellAnywhere(lat, lng) {
+    const lngScale = Math.cos((lat * Math.PI) / 180);
+    let nearest = null;
+    let nearestSquared = Infinity;
+    (window.APP.cellsIndex || []).forEach((cell) => {
+      const squared = (cell.lat - lat) ** 2 + ((cell.lng - lng) * lngScale) ** 2;
+      if (squared < nearestSquared) {
+        nearest = cell;
+        nearestSquared = squared;
+      }
+    });
+    return nearest;
+  };
+
   function selectCell(cell) {
     if (cellMarker) {
       cellMarker.setLatLng([cell.lat, cell.lng]);
@@ -404,6 +421,7 @@
         if (layer.feature.properties.codigo !== focusedRegionCode) layer.setStyle(nuts2DefaultStyle());
       });
     }
+    if (window.APP.onBasemapChanged) window.APP.onBasemapChanged();
   };
 
   // Reflete a seleção de região no mapa: destaca o contorno da região NUTS II
@@ -494,13 +512,30 @@
   // recorte acompanha-o. Usa campos internos do L.SVG (_container, _rootGroup) e
   // do L.Path (_path): Leaflet está fixo na 1.9.4, ver index.html; há testes e2e a
   // confirmar o recorte no DOM e no que o browser desenha.
+  window.APP.createRegionClip = function createRegionClip(map, rings, clipId, pane) {
+    const shape = L.polygon(rings.map((ring) => [ring]), { stroke: false, fill: false, interactive: false, pane }).addTo(map);
+    const renderer = shape._renderer;
+    const element = L.SVG.create("clipPath");
+    element.setAttribute("id", clipId);
+    element.appendChild(shape._path);
+    renderer._container.appendChild(element);
+    renderer._rootGroup.setAttribute("clip-path", `url(#${clipId})`);
+    return {
+      shape,
+      remove() {
+        renderer._rootGroup.removeAttribute("clip-path");
+        map.removeLayer(shape);
+        element.remove();
+      },
+    };
+  };
+
+  window.APP.getFocusedRings = () => focusedRings;
+
   window.APP.setRegionClip = function setRegionClip(code) {
-    if (regionClipShape) {
-      regionClipShape._renderer._rootGroup.removeAttribute("clip-path");
-      window.APP.map.removeLayer(regionClipShape);
-      regionClipElement.remove();
-      regionClipShape = null;
-      regionClipElement = null;
+    if (regionClip) {
+      regionClip.remove();
+      regionClip = null;
       window.APP.regionClipShape = null;
     }
     if (!window.APP.nuts2Layer || !window.APP.map) return;
@@ -520,20 +555,7 @@
     const rings = regionOuterRings(matchedFeature);
     focusedRings = rings;
     showPlaceLabelsWithin(rings);
-    regionClipShape = L.polygon(rings.map((ring) => [ring]), {
-      stroke: false,
-      fill: false,
-      interactive: false,
-      pane: window.APP.PANES.raster,
-    }).addTo(window.APP.map);
-
-    const renderer = regionClipShape._renderer;
-    regionClipElement = L.SVG.create("clipPath");
-    regionClipElement.setAttribute("id", "region-clip");
-    regionClipElement.appendChild(regionClipShape._path);
-    renderer._container.appendChild(regionClipElement);
-    renderer._rootGroup.setAttribute("clip-path", "url(#region-clip)");
-
-    window.APP.regionClipShape = regionClipShape; // exposto para inspeção/testes, mesmo padrão de nuts2Layer
+    regionClip = window.APP.createRegionClip(window.APP.map, rings, "region-clip", window.APP.PANES.raster);
+    window.APP.regionClipShape = regionClip.shape; // exposto para inspeção/testes, mesmo padrão de nuts2Layer
   };
 })();

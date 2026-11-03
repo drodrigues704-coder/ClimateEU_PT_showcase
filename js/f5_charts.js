@@ -147,6 +147,46 @@
     });
   }
 
+  // Exporta o indicador à escala a que os dados são apresentados: todas as regiões
+  // NUTS II e Portugal Continental. Um ponto da grelha não é exportável de
+  // propósito: daria uma falsa ideia de precisão local (ver "Sobre").
+  async function downloadNuts2Csv() {
+    const { indicator } = window.APP.getSelection();
+    const { label, unit } = window.APP.INDICATORS[indicator];
+    const periods = PERIOD_ORDER.map((p) => window.APP.PERIOD_LABELS[p]);
+    const regions = [{ codigo: "nacional", nuts2: "Portugal Continental" }, ...window.APP.NUTS2_REGIONS];
+    try {
+      const allSeries = await Promise.all(
+        regions.map(async ({ codigo }) => {
+          const metaRes = await fetch(`${window.APP.API_BASE}/series/${codigo}`);
+          if (!metaRes.ok) throw new Error(`series ${codigo}: HTTP ${metaRes.status}`);
+          const meta = await metaRes.json();
+          return (await (await fetch(meta.url)).json())[indicator];
+        })
+      );
+      const rows = [["Indicador", "Região", "Cenário", "Período", "Valor", "Unidade"]];
+      regions.forEach(({ nuts2 }, r) => {
+        buildDatasets(allSeries[r]).forEach((dataset) => {
+          dataset.data.forEach((value, i) => {
+            if (value != null) rows.push([label, nuts2, dataset.label, periods[i], String(value).replace(".", ","), unit]);
+          });
+        });
+      });
+      // ";", vírgula decimal e BOM: abre com colunas e acentos certos no Excel em português.
+      const csv = `\ufeff${rows.map((row) => row.join(";")).join("\r\n")}\r\n`;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      link.download = `climateeu_pt_${indicator}_nuts2.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error(err);
+      window.APP.showError("Não foi possível preparar o CSV. Recarrega a página para tentar outra vez.");
+    }
+  }
+
+  document.getElementById("btn-csv").addEventListener("click", downloadNuts2Csv);
+
   function setChartError(slot, message) {
     const element = document.getElementById(`chart-error-${slot}`);
     element.textContent = message || "";

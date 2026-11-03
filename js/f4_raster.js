@@ -57,6 +57,18 @@
     return type === "Polygon" || type === "MultiPolygon";
   };
 
+  // weight: 0 (sem stroke) deixava uma fresta visível na costura entre <path>
+  // vizinhos: o anti-aliasing de cada polígono não "cose" com o do vizinho. Um
+  // contorno da mesma cor fecha-a sem introduzir uma cor nova, e opacity igual a
+  // fillOpacity evita um anel mais saturado à volta de cada polígono.
+  window.APP.rasterStyle = (feature) => ({
+    fillColor: feature.properties.fill,
+    color: feature.properties.fill,
+    weight: 1,
+    opacity: RASTER_FILL_OPACITY,
+    fillOpacity: RASTER_FILL_OPACITY,
+  });
+
   window.APP.renderRaster = async function renderRaster(indicator, scenario, period) {
     // Só a resposta do pedido mais recente chega ao mapa: com a rede lenta, uma
     // resposta atrasada deixava mapa e legenda noutro período que não o escolhido.
@@ -75,25 +87,7 @@
       currentLayer = L.geoJSON(geojson, {
         filter: window.APP.isPolygonFeature,
         pane: window.APP.PANES.raster,
-        // weight: 0 (sem stroke) deixava uma fresta fina e visível na
-        // costura entre <path> SVG vizinhos — o anti-aliasing de cada
-        // polígono não "cose" com o do vizinho sem um traço a cobri-la.
-        // weight: 1 com color igual a fillColor desenha um contorno da
-        // mesma cor do preenchimento — invisível como "linha" (não
-        // introduz uma cor nova), mas fecha a fresta entre polígonos
-        // adjacentes; fillOpacity mantém-se em RASTER_FILL_OPACITY (decisão de design
-        // intencional, deixa ver o basemap por baixo). opacity (do
-        // stroke) igualada a fillOpacity — sem isto o Leaflet usa 1.0 por
-        // omissão, o que desenhava um anel ligeiramente mais saturado que
-        // o preenchimento à volta de cada polígono (achado do
-        // code-reviewer).
-        style: (feature) => ({
-          fillColor: feature.properties.fill,
-          color: feature.properties.fill,
-          weight: 1,
-          opacity: RASTER_FILL_OPACITY,
-          fillOpacity: RASTER_FILL_OPACITY,
-        }),
+        style: window.APP.rasterStyle,
       }).addTo(window.APP.map);
       // Sem bringToFront(): rasterPane tem o z-index mais baixo dos panes fixos
       // (ver initMap em f2_map.js), por isso o contorno NUTS II e o ponto
