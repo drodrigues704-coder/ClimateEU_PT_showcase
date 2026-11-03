@@ -81,59 +81,6 @@
     );
   }
 
-  const normalizeName = (name) => name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-
-  // Pesquisa de concelhos: leva o mapa até lá e consulta o ponto mais próximo. Um
-  // concelho fora da região selecionada volta à vista de Portugal Continental.
-  async function wirePlaceSearch() {
-    const input = document.getElementById("ctl-place");
-    const status = document.getElementById("place-status");
-    let places = [];
-    try {
-      places = await (await fetch("data/concelhos.json")).json();
-    } catch (err) {
-      console.error(err);
-      status.textContent = "Não foi possível carregar a lista de concelhos.";
-      return;
-    }
-    const collator = new Intl.Collator("pt-PT");
-    places.sort((a, b) => collator.compare(a[0], b[0]));
-    const list = document.getElementById("place-list");
-    places.forEach(([name]) => list.appendChild(new Option(name)));
-
-    const go = () => {
-      const query = normalizeName(input.value);
-      if (!query) return;
-      const place = places.find(([name]) => normalizeName(name) === query) || places.find(([name]) => normalizeName(name).startsWith(query));
-      if (!place) {
-        status.textContent = `Não encontrei "${input.value}". Escreve o nome de um concelho de Portugal Continental.`;
-        return;
-      }
-      const [name, lat, lng] = place;
-      const cell = window.APP.nearestCellAnywhere(lat, lng);
-      const { nuts2Code } = window.APP.getSelection();
-      if (nuts2Code && cell && cell.codigo !== nuts2Code) {
-        const national = document.querySelector('input[name="region-mode"][value="nacional"]');
-        national.checked = true;
-        national.dispatchEvent(new Event("change"));
-      }
-      window.APP.map.setView([lat, lng], Math.max(window.APP.map.getZoom(), 10), { animate: false });
-      if (cell) window.APP.selectCellById(cell.id);
-      input.value = name;
-      status.textContent = `A mostrar ${name}.`;
-      document.getElementById("cell-location").textContent = `${name}: ${document.getElementById("cell-location").textContent}`;
-      // Em ecrãs estreitos os controlos estão noutro separador.
-      window.APP.setMobileTab("mapa");
-    };
-    input.addEventListener("change", go);
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        go();
-      }
-    });
-  }
-
   async function main() {
     const urlState = readUrlState();
     window.APP.wireChrome();
@@ -261,7 +208,6 @@
 
     // O aviso só sai numa mudança de seleção: limpá-lo no primeiro refresh
     // apagava os avisos de arranque (grelha de pontos ou limites por carregar).
-    wirePlaceSearch();
     window.APP.initCompare(urlState.compare);
 
     window.APP.onSelectionChange(() => {

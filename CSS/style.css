@@ -742,31 +742,25 @@ details.warning summary { cursor: pointer; }
 }
 
 /* =============================================================================
-   PESQUISA, EXPORTAÇÃO E COMPARAÇÃO
+   EXPORTAÇÃO E COMPARAÇÃO
    ============================================================================= */
 
-#ctl-place {
-  width: 100%;
-  margin-top: 4px;
-  padding: 6px 8px;
-  border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
+.chart-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
-#ctl-place::placeholder { color: var(--text-dim); }
-#place-status { margin: 0 0 8px; }
-#place-status:empty { display: none; }
-
-.btn-csv {
+.btn-export {
   flex: 0 0 auto;
   width: auto;
+  margin-top: 0;
   padding: 4px 10px;
   font-size: 0.8rem;
 }
-.chart-panel > .btn-csv { align-self: flex-start; }
+.cell-toolbar { flex-wrap: wrap; }
+.cell-toolbar .note { flex: 1 1 auto; }
 button:disabled { opacity: 0.5; cursor: default; }
 
 #map-compare { display: none; background: var(--bg); }
@@ -802,8 +796,7 @@ button:disabled { opacity: 0.5; cursor: default; }
     height: 100%;
   }
   .leaflet-top.leaflet-right .compare-caption { margin-top: 64px; }
-  #ctl-place { min-height: 44px; font-size: 1rem; }
-  .btn-csv { min-height: 44px; }
+  .btn-export { min-height: 44px; }
   #sidebar input[type="checkbox"] {
     width: 20px;
     height: 20px;

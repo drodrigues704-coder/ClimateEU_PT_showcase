@@ -63,11 +63,6 @@
 
     <section class="panel">
       <h2>Região</h2>
-      <label>Procurar concelho
-        <input id="ctl-place" type="search" list="place-list" autocomplete="off" placeholder="Ex.: Coimbra…">
-      </label>
-      <datalist id="place-list"></datalist>
-      <p id="place-status" class="note" aria-live="polite"></p>
       <div class="row">
         <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental</label>
       </div>
@@ -120,7 +115,10 @@
         <canvas id="chart-series" role="img" aria-label="Gráfico da região selecionada"></canvas>
       </div>
       <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; os períodos seguintes mostram como SSP2-4.5 e SSP5-8.5 divergem.</p>
-      <button id="btn-csv" class="btn-csv" type="button" disabled>Descarregar CSV (regiões NUTS II)</button>
+      <div class="chart-actions">
+        <button id="btn-csv" class="btn-export" type="button" disabled>CSV (regiões NUTS II)</button>
+        <button id="btn-png-region" class="btn-export" type="button" disabled>Gráfico PNG</button>
+      </div>
     </section>
 
     <section id="chart-panel-cell" class="panel chart-panel">
@@ -130,6 +128,8 @@
       <div id="cell-chart-body" hidden>
         <div class="cell-toolbar">
           <span id="cell-location" class="note"></span>
+          <button id="btn-csv-cell" class="btn-export" type="button" disabled aria-label="Descarregar CSV deste ponto">CSV</button>
+          <button id="btn-png-cell" class="btn-export" type="button" disabled aria-label="Descarregar o gráfico deste ponto em PNG">PNG</button>
           <button id="btn-cell-clear" type="button">Limpar ponto</button>
         </div>
         <div class="chart-wrap">
@@ -331,14 +331,14 @@
      Cache-Control: no-store para todo o frontend estático; o
      export_showcase.py substitui "?v=1" por um hash do conteúdo atual
      dos .js de cada vez que exporta. -->
-<script src="js/f1_config.js?v=cadff88450"></script>
-<script src="js/f2_map.js?v=cadff88450"></script>
-<script src="js/f3_controls.js?v=cadff88450"></script>
-<script src="js/f4_raster.js?v=cadff88450"></script>
-<script src="js/f5_charts.js?v=cadff88450"></script>
-<script src="js/f6_ui.js?v=cadff88450"></script>
-<script src="js/f7_main.js?v=cadff88450"></script>
-<script src="js/f8_compare.js?v=cadff88450"></script>
+<script src="js/f1_config.js?v=a94deb7610"></script>
+<script src="js/f2_map.js?v=a94deb7610"></script>
+<script src="js/f3_controls.js?v=a94deb7610"></script>
+<script src="js/f4_raster.js?v=a94deb7610"></script>
+<script src="js/f5_charts.js?v=a94deb7610"></script>
+<script src="js/f6_ui.js?v=a94deb7610"></script>
+<script src="js/f7_main.js?v=a94deb7610"></script>
+<script src="js/f8_compare.js?v=a94deb7610"></script>
 
 </body>
 </html>

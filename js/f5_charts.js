@@ -147,13 +147,36 @@
     });
   }
 
-  // Exporta o indicador à escala a que os dados são apresentados: todas as regiões
-  // NUTS II e Portugal Continental. Um ponto da grelha não é exportável de
-  // propósito: daria uma falsa ideia de precisão local (ver "Sobre").
-  async function downloadNuts2Csv() {
-    const { indicator } = window.APP.getSelection();
+  function saveFile(blob, filename) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function seriesRows(indicator, place, series) {
     const { label, unit } = window.APP.INDICATORS[indicator];
     const periods = PERIOD_ORDER.map((p) => window.APP.PERIOD_LABELS[p]);
+    const rows = [];
+    buildDatasets(series).forEach((dataset) => {
+      dataset.data.forEach((value, i) => {
+        if (value != null) rows.push([label, place, dataset.label, periods[i], String(value).replace(".", ","), unit]);
+      });
+    });
+    return rows;
+  }
+
+  // ";", vírgula decimal e BOM: abre com colunas e acentos certos no Excel em português.
+  function saveCsv(rows, filename) {
+    const csv = `\ufeff${rows.map((row) => row.join(";")).join("\r\n")}\r\n`;
+    saveFile(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
+  }
+
+  // O indicador nas 7 regiões NUTS II e em Portugal Continental, seja qual for a
+  // região selecionada.
+  async function downloadNuts2Csv() {
+    const { indicator } = window.APP.getSelection();
     const regions = [{ codigo: "nacional", nuts2: "Portugal Continental" }, ...window.APP.NUTS2_REGIONS];
     try {
       const allSeries = await Promise.all(
@@ -164,28 +187,77 @@
           return (await (await fetch(meta.url)).json())[indicator];
         })
       );
-      const rows = [["Indicador", "Região", "Cenário", "Período", "Valor", "Unidade"]];
-      regions.forEach(({ nuts2 }, r) => {
-        buildDatasets(allSeries[r]).forEach((dataset) => {
-          dataset.data.forEach((value, i) => {
-            if (value != null) rows.push([label, nuts2, dataset.label, periods[i], String(value).replace(".", ","), unit]);
-          });
-        });
-      });
-      // ";", vírgula decimal e BOM: abre com colunas e acentos certos no Excel em português.
-      const csv = `\ufeff${rows.map((row) => row.join(";")).join("\r\n")}\r\n`;
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-      link.download = `climateeu_pt_${indicator}_nuts2.csv`;
-      link.click();
-      URL.revokeObjectURL(link.href);
+      const header = ["Indicador", "Região", "Cenário", "Período", "Valor", "Unidade"];
+      const rows = regions.flatMap(({ nuts2 }, i) => seriesRows(indicator, nuts2, allSeries[i]));
+      saveCsv([header, ...rows], `climateeu_pt_${indicator}_nuts2.csv`);
     } catch (err) {
       console.error(err);
       window.APP.showError("Não foi possível preparar o CSV. Recarrega a página para tentar outra vez.");
     }
   }
 
+  // Última série do ponto escolhido, para exportar. Um CSV de um só bloco de 5 km
+  // leva as coordenadas, para o valor não se separar do sítio a que pertence.
+  let cellExport = null;
+
+  function downloadCellCsv() {
+    const { series, indicator, cellId } = cellExport;
+    const place = document.getElementById("cell-location").textContent;
+    const header = ["Indicador", "Ponto", "Cenário", "Período", "Valor", "Unidade"];
+    saveCsv([header, ...seriesRows(indicator, place, series)], `climateeu_pt_${indicator}_ponto_${cellId}.csv`);
+  }
+
+  const slugify = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  // Último gráfico desenhado por painel, para o nome do ficheiro PNG.
+  const lastDrawn = { region: null, cell: null };
+
+  // O canvas do Chart.js tem fundo transparente e texto claro, ilegível num
+  // documento branco: o PNG leva o fundo do painel, o título e a fonte.
+  function downloadChartPng(slot) {
+    const chart = chartInstances[slot];
+    chart.update("none"); // acaba a animação, para não sair um gráfico a meio
+    const source = chart.canvas;
+    const scale = source.width / source.clientWidth;
+    const style = getComputedStyle(document.documentElement);
+    const fontFamily = style.getPropertyValue("--font-body").trim();
+    const header = 40 * scale;
+    const footer = 28 * scale;
+    const margin = 12 * scale;
+
+    const output = document.createElement("canvas");
+    output.width = source.width + margin * 2;
+    output.height = source.height + header + footer;
+    const ctx = output.getContext("2d");
+    ctx.fillStyle = style.getPropertyValue("--panel-bg").trim();
+    ctx.fillRect(0, 0, output.width, output.height);
+    ctx.drawImage(source, margin, header);
+
+    const title = document.getElementById(`chart-title-${slot}`).textContent;
+    let titleSize = 15 * scale;
+    ctx.textBaseline = "middle";
+    do {
+      ctx.font = `600 ${titleSize}px ${fontFamily}`;
+      titleSize -= scale / 2;
+    } while (ctx.measureText(title).width > output.width - margin * 2 && titleSize > 8 * scale);
+    ctx.fillStyle = style.getPropertyValue("--text").trim();
+    ctx.fillText(title, margin, header / 2);
+
+    const place = slot === "cell" ? `${document.getElementById("cell-location").textContent}. ` : "";
+    ctx.font = `${11 * scale}px ${fontFamily}`;
+    ctx.fillStyle = style.getPropertyValue("--text-dim").trim();
+    ctx.fillText(`${place}Climatologias de 30 anos. Fonte: ClimateEU.`, margin, output.height - footer / 2);
+
+    const { indicator, placeName } = lastDrawn[slot];
+    const suffix = slot === "cell" ? `ponto_${cellExport.cellId}` : slugify(placeName);
+    output.toBlob((blob) => saveFile(blob, `climateeu_pt_${indicator}_${suffix}.png`), "image/png");
+  }
+
   document.getElementById("btn-csv").addEventListener("click", downloadNuts2Csv);
+  document.getElementById("btn-csv-cell").addEventListener("click", downloadCellCsv);
+  Object.keys(lastDrawn).forEach((slot) => {
+    document.getElementById(`btn-png-${slot}`).addEventListener("click", () => downloadChartPng(slot));
+  });
 
   function setChartError(slot, message) {
     const element = document.getElementById(`chart-error-${slot}`);
@@ -214,6 +286,8 @@
       if (window.Chart) {
         drawChart(series, indicator, slot, placeName);
         setChartError(slot, null);
+        lastDrawn[slot] = { indicator, placeName };
+        document.getElementById(`btn-png-${slot}`).disabled = false;
       } else {
         setChartError(slot, CHART_LIBRARY_MESSAGE);
         if (window.APP.showError) window.APP.showError(CHART_LIBRARY_MESSAGE);
@@ -240,16 +314,25 @@
   // Painel 2 (só depois de um clique no mapa): série de uma célula individual
   // da grelha ClimateEU (blocos de 5 km) — painel próprio, não uma sobreposição
   // do painel 1 (ver f7_main.js).
-  window.APP.renderChartForCell = function renderChartForCell(indicator, cellId) {
+  window.APP.renderChartForCell = async function renderChartForCell(indicator, cellId) {
     document.getElementById("cell-chart-placeholder").hidden = true;
     document.getElementById("cell-chart-body").hidden = false;
-    return fetchAndDraw(`/cells/${cellId}`, indicator, "cell", "ponto escolhido");
+    const series = await fetchAndDraw(`/cells/${cellId}`, indicator, "cell", "ponto escolhido");
+    if (series) {
+      cellExport = { series, indicator, cellId };
+      document.getElementById("btn-csv-cell").disabled = false;
+    }
+    return series;
   };
 
   window.APP.clearCellChart = function clearCellChart() {
     latestRequest.cell += 1;
     if (chartInstances.cell) chartInstances.cell.destroy();
     chartInstances.cell = null;
+    cellExport = null;
+    lastDrawn.cell = null;
+    document.getElementById("btn-csv-cell").disabled = true;
+    document.getElementById("btn-png-cell").disabled = true;
     setChartError("cell", null);
     document.getElementById("chart-title-cell").textContent = "Ponto escolhido no mapa";
     document.getElementById("cell-chart-placeholder").hidden = false;

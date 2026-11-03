@@ -330,22 +330,6 @@
     return nearest;
   }
 
-  // Ponto da grelha mais próximo de um lugar, sem o filtro da região selecionada:
-  // a pesquisa de concelhos pode levar a outra região.
-  window.APP.nearestCellAnywhere = function nearestCellAnywhere(lat, lng) {
-    const lngScale = Math.cos((lat * Math.PI) / 180);
-    let nearest = null;
-    let nearestSquared = Infinity;
-    (window.APP.cellsIndex || []).forEach((cell) => {
-      const squared = (cell.lat - lat) ** 2 + ((cell.lng - lng) * lngScale) ** 2;
-      if (squared < nearestSquared) {
-        nearest = cell;
-        nearestSquared = squared;
-      }
-    });
-    return nearest;
-  };
-
   function selectCell(cell) {
     if (cellMarker) {
       cellMarker.setLatLng([cell.lat, cell.lng]);
