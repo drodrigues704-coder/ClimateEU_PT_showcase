@@ -5,20 +5,30 @@
 (function () {
   let currentBasemapKey = "dark";
   let basemapLayer = null;
+  let focusedRegionCode = null;
 
-  const NUTS2_DEFAULT_STYLE = { color: "#ffffff", weight: 1.5, fillOpacity: 0, opacity: 0.6 };
+  // O contorno segue o mapa de fundo: branco desaparecia no basemap claro.
+  const NUTS2_OUTLINE_COLORS = { dark: "#ffffff", light: "#1b2a36" };
+  const nuts2DefaultStyle = () => ({
+    color: NUTS2_OUTLINE_COLORS[currentBasemapKey],
+    weight: 1.5,
+    fillOpacity: 0,
+    opacity: 0.6,
+  });
   // Mesmo tom de --accent em CSS/style.css, para a região selecionada se
   // destacar claramente do resto do contorno NUTS II.
   const NUTS2_HIGHLIGHT_STYLE = { color: "#3fa7c9", weight: 4, fillOpacity: 0, opacity: 1 };
 
-  // Pontos da grelha ClimateEU (blocos de 5 km, 3574 células) — sempre
-  // invisíveis, mesmo no hover (decisão de design: nenhuma pista visual de
-  // onde estão os pontos, só a área de clique). Radius um pouco maior do
-  // que o "visual" faria sentido (5 → 9) só para alargar a área de deteção
-  // de clique, já que não há nenhum contorno a ajudar a acertar. pane:
-  // preenchido em loadCellsLayer (só existe depois de window.APP.PANES
-  // ser definido em initMap).
-  const CELL_DEFAULT_STYLE = { radius: 9, color: "#3fa7c9", weight: 1, fillColor: "#3fa7c9", fillOpacity: 0, opacity: 0 };
+  // Pontos da grelha ClimateEU (blocos de 5 km, 3574 células) — dados, não
+  // camadas: um clique no mapa escolhe o mais próximo. Os antigos círculos
+  // invisíveis de raio fixo (9 px) não escalavam com o zoom: a zoom 7
+  // sobrepunham-se (abria um ponto vizinho) e a zoom 12 só 1% do mapa era
+  // clicável, com cliques a falhar em silêncio. 4 km cobre a meia diagonal de
+  // um bloco de 5 km (3,54 km); mais longe disso, o clique está fora da grelha.
+  const MAX_CELL_PICK_KM = 4;
+  const KM_PER_DEGREE = 111.32;
+  // Só o ponto escolhido fica visível, para se saber o que foi consultado.
+  const CELL_MARKER_STYLE = { radius: 7, color: "#ffffff", weight: 2, fillColor: "#3fa7c9", fillOpacity: 1, interactive: false };
 
   // Cor/opacidade da máscara de região (ver setRegionMask abaixo) — usa
   // --panel-bg do CSS (não --bg) por ser o tom já usado para "superfície
@@ -32,6 +42,10 @@
   const WORLD_RING = [[-90, -200], [-90, 200], [90, 200], [90, -200]];
 
   let cellClickCallbacks = [];
+  let cellsReadyCallbacks = [];
+  let cellMarker = null;
+  let cellsLoadFailed = false;
+  const CELLS_UNAVAILABLE_MESSAGE = "Não foi possível carregar os pontos do mapa. Recarrega a página para os poderes consultar.";
   let regionMaskLayer = null;
   let nuts2ReadyCallbacks = [];
 
@@ -43,7 +57,9 @@
   }
 
   window.APP.initMap = function initMap() {
-    const map = L.map("map", { zoomControl: true }).setView(window.APP.PORTUGAL_CENTER, window.APP.PORTUGAL_ZOOM);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const map = L.map("map", { zoomControl: true, zoomAnimation: !reducedMotion, fadeAnimation: !reducedMotion })
+      .setView(window.APP.PORTUGAL_CENTER, window.APP.PORTUGAL_ZOOM);
     basemapLayer = buildBasemapLayer(currentBasemapKey);
     basemapLayer.addTo(map);
     window.APP.map = map;
@@ -74,11 +90,15 @@
     map.getPane("regionMaskPane").style.zIndex = 430;
     map.createPane("cellsPane");
     map.getPane("cellsPane").style.zIndex = 440;
+    map.createPane("labelsPane");
+    map.getPane("labelsPane").style.zIndex = 450;
+    map.getPane("labelsPane").style.pointerEvents = "none";
     window.APP.PANES = {
       raster: "rasterPane",
       nuts2: "nuts2Pane",
       regionMask: "regionMaskPane",
       cells: "cellsPane",
+      labels: "labelsPane",
     };
 
     // data/nuts2_display.geojson — versão simplificada de data/nuts2.geojson
@@ -93,7 +113,7 @@
       .then((r) => r.json())
       .then((geojson) => {
         window.APP.nuts2Layer = L.geoJSON(geojson, {
-          style: NUTS2_DEFAULT_STYLE,
+          style: nuts2DefaultStyle(),
           pane: window.APP.PANES.nuts2,
         }).addTo(map);
         // focusRegion/setRegionMask saem em silêncio (guarda de nuts2Layer)
@@ -103,17 +123,44 @@
         // escolhida sem destaque/máscara até à próxima mudança de seletor.
         nuts2ReadyCallbacks.forEach((cb) => cb());
       })
-      .catch((err) => console.error("Falha a carregar nuts2_display.geojson:", err));
+      .catch((err) => {
+        console.error("Falha a carregar nuts2_display.geojson:", err);
+        window.APP.showError("Não foi possível carregar os limites das regiões. Recarrega a página para tentar outra vez.");
+      });
 
-    loadCellsLayer(map);
+    addPlaceLabels(map);
+    loadCells();
+    map.on("click", (e) => {
+      if (cellsLoadFailed) {
+        window.APP.showError(CELLS_UNAVAILABLE_MESSAGE);
+        return;
+      }
+      const cell = nearestCell(e.latlng);
+      if (cell) selectCell(cell);
+    });
 
     return map;
   };
 
-  // Camada de pontos da grelha ClimateEU — mesmo padrão de 2 pedidos (meta
-  // depois GeoJSON) já usado em renderRaster (f4_raster.js) e renderChart
-  // (f5_charts.js) para falar com a API/estático via window.APP.API_BASE.
-  async function loadCellsLayer(map) {
+  function addPlaceLabels(map) {
+    window.APP.PLACE_LABELS.forEach(([name, lat, lng]) => {
+      L.tooltip({
+        permanent: true,
+        direction: "right",
+        pane: window.APP.PANES.labels,
+        className: "place-label",
+        offset: [4, 0],
+        interactive: false,
+      })
+        .setLatLng([lat, lng])
+        .setContent(name)
+        .addTo(map);
+    });
+  }
+
+  // Grelha ClimateEU — mesmo padrão de 2 pedidos (meta depois GeoJSON) já
+  // usado em renderRaster (f4_raster.js) e renderChart (f5_charts.js).
+  async function loadCells() {
     try {
       const metaRes = await fetch(`${window.APP.API_BASE}/cells-grid`);
       if (!metaRes.ok) throw new Error(`Sem grelha de células (HTTP ${metaRes.status})`);
@@ -122,38 +169,79 @@
       const geojsonRes = await fetch(meta.url);
       const geojson = await geojsonRes.json();
 
-      window.APP.cellsLayer = L.geoJSON(geojson, {
-        pointToLayer: (feature, latlng) =>
-          L.circleMarker(latlng, { ...CELL_DEFAULT_STYLE, pane: window.APP.PANES.cells }),
-        // onEachFeature, não onEachLayer — essa opção não existe na API do
-        // Leaflet (L.GeoJSON só reconhece onEachFeature); com o nome errado
-        // a chave era ignorada silenciosamente, a camada carregava e
-        // desenhava os pontos na mesma, mas nenhum listener de
-        // click/mouseover/mouseout chegava a ser vinculado — achado real do
-        // qa-engineer num browser, não visível em node --check nem em
-        // testes que só confirmam "a camada carrega sem erro".
-        // Sem mouseover/mouseout: os pontos nunca ganham destaque visual,
-        // nem no hover (decisão de design) — só o clique continua a
-        // disparar os callbacks registados em onCellClick.
-        onEachFeature: (feature, layer) => {
-          layer.on("click", () => {
-            cellClickCallbacks.forEach((cb) => cb(feature.properties.id));
-          });
-        },
-      }).addTo(map);
-      // Sem bringToFront(): cellsPane tem o maior z-index fixo (ver
-      // initMap), a camada fica sempre acima do raster/nuts2/máscara
-      // independentemente da ordem de chegada dos fetches assíncronos.
+      window.APP.cellsIndex = geojson.features.map((feature) => ({
+        id: feature.properties.id,
+        codigo: feature.properties.codigo,
+        lat: feature.geometry.coordinates[1],
+        lng: feature.geometry.coordinates[0],
+      }));
+      cellsReadyCallbacks.forEach((cb) => cb());
     } catch (err) {
       console.error("Falha a carregar cells-grid:", err);
+      cellsLoadFailed = true;
+      window.APP.showError(CELLS_UNAVAILABLE_MESSAGE);
     }
   }
 
-  // Regista um callback chamado com o cellId (properties.id) sempre que
-  // uma célula da grelha é clicada — mesmo padrão de window.APP.onSelectionChange
-  // em f3_controls.js.
+  function nearestCell(latlng) {
+    if (!window.APP.cellsIndex) return null;
+    const lngScale = Math.cos((latlng.lat * Math.PI) / 180);
+    let nearest = null;
+    let nearestSquared = (MAX_CELL_PICK_KM / KM_PER_DEGREE) ** 2;
+    window.APP.cellsIndex.forEach((cell) => {
+      // Com uma região selecionada, o resto do país está tapado pela máscara:
+      // só contam os pontos dessa região. Filtrar aqui, e não depois: junto ao
+      // limite, o ponto mais próximo de um clique na região pode ser da vizinha.
+      if (focusedRegionCode != null && cell.codigo !== focusedRegionCode) return;
+      const dLat = cell.lat - latlng.lat;
+      const dLng = (cell.lng - latlng.lng) * lngScale;
+      const squared = dLat * dLat + dLng * dLng;
+      if (squared <= nearestSquared) {
+        nearest = cell;
+        nearestSquared = squared;
+      }
+    });
+    return nearest;
+  }
+
+  function selectCell(cell) {
+    if (cellMarker) {
+      cellMarker.setLatLng([cell.lat, cell.lng]);
+    } else {
+      cellMarker = L.circleMarker([cell.lat, cell.lng], { ...CELL_MARKER_STYLE, pane: window.APP.PANES.cells }).addTo(window.APP.map);
+    }
+    cellClickCallbacks.forEach((cb) => cb(cell));
+  }
+
+  window.APP.selectCellById = function selectCellById(cellId) {
+    const cell = (window.APP.cellsIndex || []).find((candidate) => candidate.id === cellId);
+    if (cell) selectCell(cell);
+  };
+
+  window.APP.clearCellMarker = function clearCellMarker() {
+    if (cellMarker) window.APP.map.removeLayer(cellMarker);
+    cellMarker = null;
+    window.APP.map.closePopup();
+  };
+
+  window.APP.openCellPopup = function openCellPopup(cell, html) {
+    // Em ecrãs estreitos, o resumo e o zoom ficam por cima do mapa: o autoPan tem
+    // de deixar o popup abaixo deles, senão tapam o título e o botão de fechar.
+    const narrow = window.matchMedia("(max-width: 1000px)").matches;
+    L.popup({ offset: [0, -6], autoPanPaddingTopLeft: narrow ? [8, 108] : [5, 5] })
+      .setLatLng([cell.lat, cell.lng])
+      .setContent(html)
+      .openOn(window.APP.map);
+  };
+
+  // Regista um callback chamado com a célula escolhida (`{id, codigo, lat,
+  // lng}`) — mesmo padrão de window.APP.onSelectionChange em f3_controls.js.
   window.APP.onCellClick = function onCellClick(callback) {
     cellClickCallbacks.push(callback);
+  };
+
+  window.APP.onCellsReady = function onCellsReady(callback) {
+    cellsReadyCallbacks.push(callback);
   };
 
   // Regista um callback chamado quando window.APP.nuts2Layer fica pronto
@@ -163,12 +251,20 @@
     nuts2ReadyCallbacks.push(callback);
   };
 
+  window.APP.getBasemap = () => currentBasemapKey;
+
   window.APP.toggleBasemap = function toggleBasemap() {
     currentBasemapKey = currentBasemapKey === "dark" ? "light" : "dark";
     window.APP.map.removeLayer(basemapLayer);
     basemapLayer = buildBasemapLayer(currentBasemapKey);
     basemapLayer.addTo(window.APP.map);
     basemapLayer.bringToBack();
+    document.documentElement.style.setProperty("--basemap-land", window.APP.BASEMAPS[currentBasemapKey].land);
+    if (window.APP.nuts2Layer) {
+      window.APP.nuts2Layer.eachLayer((layer) => {
+        if (layer.feature.properties.codigo !== focusedRegionCode) layer.setStyle(nuts2DefaultStyle());
+      });
+    }
     return currentBasemapKey;
   };
 
@@ -205,14 +301,19 @@
   // setView() aplicam a vista nova de forma síncrona — deixa de existir
   // essa janela de estado transitório, independentemente de quão depressa
   // o utilizador mudar de região.
-  window.APP.focusRegion = function focusRegion(code) {
+  //
+  // keepView: só atualiza o destaque, sem mexer na vista (vista restaurada de
+  // uma ligação partilhada, ver f7_main.js).
+  window.APP.focusRegion = function focusRegion(code, keepView = false) {
     if (!window.APP.nuts2Layer || !window.APP.map) return;
+    focusedRegionCode = code;
     let matched = null;
     window.APP.nuts2Layer.eachLayer((layer) => {
       const isMatch = code != null && layer.feature.properties.codigo === code;
-      layer.setStyle(isMatch ? NUTS2_HIGHLIGHT_STYLE : NUTS2_DEFAULT_STYLE);
+      layer.setStyle(isMatch ? NUTS2_HIGHLIGHT_STYLE : nuts2DefaultStyle());
       if (isMatch) matched = layer;
     });
+    if (keepView) return;
     if (matched) {
       window.APP.map.fitBounds(matched.getBounds(), { padding: [24, 24], animate: false });
     } else {
@@ -308,18 +409,16 @@
       stroke: false,
       fillColor: REGION_MASK_COLOR,
       fillOpacity: REGION_MASK_OPACITY,
-      interactive: false, // não deve bloquear clique nos pontos da grelha por baixo
+      interactive: false, // o clique chega ao mapa, que decide o que fazer (ver map.on("click"))
       pane: window.APP.PANES.regionMask,
     }).addTo(window.APP.map);
 
     // Acima do raster/contorno NUTS II (regionMaskPane > rasterPane/
-    // nuts2Pane em z-index, ver initMap) — a grelha de células continua
-    // clicável por cima porque cellsPane tem z-index ainda maior, não por
-    // causa da ordem de inserção. Sem bringToFront(): era exatamente essa
-    // dependência de ordem de inserção/chamada que fazia o
+    // nuts2Pane em z-index, ver initMap). Sem bringToFront(): era exatamente
+    // essa dependência de ordem de inserção/chamada que fazia o
     // currentLayer.bringToFront() assíncrono de renderRaster (f4_raster.js)
-    // enterrar a máscara sempre que corria depois deste ponto (achado
-    // real, ver comentário em initMap).
-    window.APP.regionMaskLayer = regionMaskLayer; // exposto para inspeção/testes, mesmo padrão de nuts2Layer/cellsLayer
+    // enterrar a máscara sempre que corria depois deste ponto (achado real,
+    // ver comentário em initMap).
+    window.APP.regionMaskLayer = regionMaskLayer; // exposto para inspeção/testes, mesmo padrão de nuts2Layer
   };
 })();

@@ -3,29 +3,73 @@
 // ============================================================================
 
 (function () {
+  // Contador: vários pedidos correm em paralelo, e o primeiro a acabar não
+  // pode esconder o indicador enquanto os outros continuam.
+  let pendingRequests = 0;
   window.APP.showLoading = function showLoading() {
+    pendingRequests += 1;
     document.getElementById("loading-overlay").hidden = false;
   };
   window.APP.hideLoading = function hideLoading() {
-    document.getElementById("loading-overlay").hidden = true;
+    pendingRequests = Math.max(0, pendingRequests - 1);
+    if (pendingRequests === 0) document.getElementById("loading-overlay").hidden = true;
   };
+
+  // O aviso fica até ser fechado, ou até à próxima mudança de seleção.
   window.APP.showError = function showError(message) {
-    const banner = document.getElementById("error-banner");
-    banner.textContent = message;
-    banner.hidden = false;
-    setTimeout(() => { banner.hidden = true; }, 6000);
+    document.getElementById("error-text").textContent = message;
+    document.getElementById("error-banner").hidden = false;
   };
+  window.APP.hideError = function hideError() {
+    document.getElementById("error-banner").hidden = true;
+  };
+
+  window.APP.updateBasemapButton = function updateBasemapButton() {
+    document.getElementById("btn-basemap").textContent = window.APP.getBasemap() === "dark" ? "Mapa claro" : "Mapa escuro";
+  };
+
+  function wireInfoModal() {
+    const modal = document.getElementById("info-modal");
+    const openButton = document.getElementById("btn-info");
+    const closeButton = document.getElementById("btn-info-close");
+    const close = () => {
+      modal.hidden = true;
+      openButton.focus();
+    };
+    openButton.addEventListener("click", () => {
+      modal.hidden = false;
+      closeButton.focus();
+    });
+    closeButton.addEventListener("click", close);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) close();
+    });
+    modal.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+      // O botão de fechar é o único elemento focável: o foco não sai do diálogo.
+      if (e.key === "Tab") e.preventDefault();
+    });
+  }
 
   window.APP.wireChrome = function wireChrome() {
     document.getElementById("btn-basemap").addEventListener("click", () => {
-      const key = window.APP.toggleBasemap();
-      document.getElementById("btn-basemap").textContent = key === "dark" ? "🗺 Mapa: Escuro" : "🗺 Mapa: Claro";
+      window.APP.toggleBasemap();
+      window.APP.updateBasemapButton();
+      window.APP.syncUrl();
     });
-    document.getElementById("btn-info").addEventListener("click", () => {
-      document.getElementById("info-modal").hidden = false;
+    wireInfoModal();
+    document.getElementById("btn-error-close").addEventListener("click", window.APP.hideError);
+
+    const summaryButton = document.getElementById("btn-map-summary");
+    summaryButton.addEventListener("click", () => {
+      const legend = document.getElementById("map-legend");
+      legend.hidden = !legend.hidden;
+      summaryButton.setAttribute("aria-expanded", String(!legend.hidden));
     });
-    document.getElementById("btn-info-close").addEventListener("click", () => {
-      document.getElementById("info-modal").hidden = true;
+
+    // O botão vem dentro do popup do Leaflet, criado depois deste arranque.
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".popup-charts")) window.APP.setMobileTab("graficos");
     });
   };
 
@@ -40,7 +84,8 @@
     document.body.setAttribute("data-mobile-tab", tab);
     document.querySelectorAll("#mobile-tabs .mobile-tab").forEach((btn) => {
       const active = btn.dataset.tab === tab;
-      btn.setAttribute("aria-selected", active ? "true" : "false");
+      if (active) btn.setAttribute("aria-current", "true");
+      else btn.removeAttribute("aria-current");
     });
 
     // Armadilha clássica do Leaflet: um L.Map criado (ou já existente)

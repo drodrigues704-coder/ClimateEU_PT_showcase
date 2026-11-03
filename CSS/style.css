@@ -1,21 +1,22 @@
 /*
 ===============================================================================
-WEBAPP — CORDEX PT — STYLE.CSS
+WEBAPP — CLIMATEEU PT — STYLE.CSS
 
 Estrutura de layout (cabeçalho fixo, sidebar + mapa, secções de painel,
 legenda, overlay de carregamento, banner de erro, modal "Sobre") adaptada
 de scripts/frontend/CSS/style.css do SPI_SPEI_scPDSI — mesma família
 tipográfica (IBM Plex, carregada via Google Fonts em index.html), cores e
-texto substituídos pela identidade CORDEX PT.
+texto substituídos pela identidade ClimateEU PT.
 ===============================================================================
 */
 
 :root {
   /* Paleta "atlântico" — tons de azul/verde-água, associados a dados
      climáticos (não o castanho-terra do SPI_SPEI, que era sobre seca).
-     --accent aproxima-se do tom intermédio das rampas de precipitação/
-     humidade (f1_config.js -> COLOR_RAMPS) sem repetir nenhuma cor de
-     classe real, para servir só de acento neutro de UI. */
+     --accent é só um acento neutro de UI: as cores dos dados vêm de
+     color_scales em catalog.json. */
+  color-scheme: dark;
+  --basemap-land: #414143; /* basemap inicial; toggleBasemap atualiza-o (f2_map.js) */
   --bg: #0b1620;
   --panel-bg: #12222f;
   --panel-border: #24394a;
@@ -34,7 +35,10 @@ texto substituídos pela identidade CORDEX PT.
   --font-mono: "IBM Plex Mono", ui-monospace, "Courier New", monospace;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; scrollbar-color: var(--panel-border) transparent; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent); color: var(--bg); }
 
 html, body {
   margin: 0;
@@ -130,6 +134,8 @@ button {
 }
 button:hover { border-color: var(--accent); }
 
+input[type="radio"] { accent-color: var(--accent); }
+
 label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 6px; }
 
 .row {
@@ -149,17 +155,28 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
 #ctl-nuts2-wrapper { margin-top: 8px; }
 
 #raster-legend { margin-top: 8px; }
-.legend-bar {
-  height: 12px;
-  border-radius: 4px;
-}
-.legend-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.72rem;
+.legend-unit {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
   color: var(--text-dim);
-  margin-top: 2px;
+}
+.legend-classes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.legend-classes li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+.legend-swatch {
+  flex: 0 0 28px;
+  align-self: stretch;
 }
 
 #map {
@@ -237,10 +254,12 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   align-items: center;
   justify-content: center;
   z-index: 2000;
+  /* Só informa: não pode impedir mudar de seleção enquanto carrega. */
+  pointer-events: none;
 }
 /* [hidden] tem baixa especificidade — sem isto, o #loading-overlay acima
    (seletor de ID) ganhava à regra [hidden]{display:none} do browser e o
-   overlay continuava a bloquear cliques mesmo com hidden="" definido. */
+   overlay continuava visível mesmo com hidden="" definido. */
 #loading-overlay:not([hidden]) {
   display: flex;
 }
@@ -266,6 +285,26 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   z-index: 2100;
   font-size: 0.85rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+#error-banner:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  max-width: calc(100vw - 16px);
+}
+#btn-error-close {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-color: currentColor;
+  color: inherit;
 }
 
 /* =============================================================================
@@ -296,6 +335,7 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   max-width: 640px;
   max-height: 85vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px 28px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
@@ -314,7 +354,9 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   padding: 0;
   margin: 0;
   border-radius: 50%;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .warning {
@@ -344,6 +386,7 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
    do breakpoint — esta regra fora do @media garante que o desktop nunca a
    vê, sem o JS precisar de saber em que largura está. */
 #mobile-tabs { display: none; }
+#map-summary { display: none; }
 
 /* Abaixo de ~1000px as 3 colunas lado a lado (280px sidebar + 400px
    chart-column fixos, só o mapa é que cede largura) deixam de caber com
@@ -398,7 +441,60 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
      reparte por igual pela altura toda disponível; só a base min-height
      precisa subir, para ficarem visivelmente maiores do que no desktop
      como pedido, não apertados ao mínimo antigo. */
-  .chart-panel { min-height: 320px; }
+  .chart-panel {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+  /* Altura fixa em vez do espaço flex restante: aqui a coluna faz scroll, e o
+     texto à volta deixava um dos gráficos com só 20 px de altura. */
+  .chart-wrap {
+    flex: 0 0 auto;
+    height: 260px;
+  }
+
+  /* O mapa abre sozinho neste separador: diz o que mostra e traz a legenda. */
+  body[data-mobile-tab="mapa"] #map-summary {
+    display: block;
+    position: absolute;
+    top: 8px;
+    left: 62px;
+    right: 8px;
+    z-index: 1000;
+  }
+  #btn-map-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 0;
+    background: var(--panel-bg);
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 0.8rem;
+    letter-spacing: 0;
+    text-align: left;
+  }
+  .map-summary-action {
+    flex: 0 0 auto;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  #map-legend {
+    max-height: 60vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-top: 4px;
+    padding: 8px;
+    border-radius: 6px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+  }
+  .leaflet-touch .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+  }
 
   /* --- Cabeçalho: não pode partir/cortar em telemóveis pequenos (~360–
      400px de largura) --- */
@@ -409,17 +505,35 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   }
   #app-header h1 {
     font-size: 0.95rem;
-    flex: 1 1 auto;
+    flex: 1 1 0; /* parte o título em vez de empurrar os botões para outra linha */
     min-width: 0; /* permite ao título quebrar linha em vez de forçar overflow horizontal (min-width:auto é a omissão em flex items) */
   }
-  #app-subtitle {
-    order: 3;
-    flex-basis: 100%; /* linha própria, por baixo do título+botões, em vez de disputar espaço na mesma linha */
-    font-size: 0.72rem;
-  }
+  /* Sem subtítulo: em telemóvel o cabeçalho gastava 113 px de altura ao mapa. */
+  #app-subtitle { display: none; }
   #btn-basemap, #btn-info {
+    min-height: 44px;
     padding: 8px 10px;
     font-size: 0.8rem;
+  }
+  #btn-info-close, #btn-error-close {
+    width: 44px;
+    height: 44px;
+  }
+  #btn-cell-clear { min-height: 44px; }
+  .leaflet-container a.leaflet-popup-close-button {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    line-height: 44px;
+  }
+  /* Por cima da barra de separadores, a toda a largura: a meio do cabeçalho
+     tapava os botões e o resumo do mapa. */
+  #error-banner {
+    top: auto;
+    bottom: 68px;
+    left: 8px;
+    right: 8px;
+    transform: none;
   }
 
   /* --- Alvos de toque confortáveis nos controlos (mín. ~44px, regra
@@ -471,10 +585,105 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
     border-radius: 0;
     color: var(--text-dim);
     font-family: var(--font-display);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.02em;
   }
-  .mobile-tab-icon { font-size: 1.2rem; line-height: 1; }
-  .mobile-tab[aria-selected="true"] { color: var(--accent); }
+  .mobile-tab[aria-current="true"] { color: var(--accent); }
+}
+
+/* =============================================================================
+   LOCALIDADES, PONTO ESCOLHIDO, ACESSIBILIDADE
+   ============================================================================= */
+
+/* Branco com contorno escuro: tem de se ler sobre as 8 rampas e os 2 basemaps. */
+.leaflet-tooltip.place-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0 0 0 8px;
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: 0 0 2px #000000, 0 0 2px #000000, 0 1px 3px #000000;
+}
+.leaflet-tooltip.place-label::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  margin: -3px 0 0;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #000000;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.leaflet-container.leaflet-grab { cursor: crosshair; }
+
+.popup-value {
+  margin: 4px 0;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.leaflet-popup-content .note { margin: 0; }
+/* Só em ecrãs estreitos, onde o gráfico está noutro separador. */
+.popup-charts { display: none; }
+@media (max-width: 1000px) {
+  .popup-charts { display: block; min-height: 44px; }
+}
+
+.cell-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.cell-toolbar .note { margin: 0; font-variant-numeric: tabular-nums; }
+#btn-cell-clear {
+  flex: 0 0 auto;
+  width: auto;
+  margin-top: 0;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+details.warning summary { cursor: pointer; }
+
+.chart-error {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--warning-text);
+}
+
+#ctl-nuts2-wrapper select { margin-top: 4px; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3100;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text);
+  transform: translateY(-200%);
+}
+.skip-link:focus { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 3s; }
 }

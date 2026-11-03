@@ -1,5 +1,5 @@
 // ============================================================================
-// CORDEX PT WEBAPP — F1_CONFIG.JS
+// CLIMATEEU PT WEBAPP — F1_CONFIG.JS
 // Configuração partilhada por todos os outros módulos (f2_map.js em
 // diante) — nada aqui faz pedidos de rede nem toca o DOM.
 // ============================================================================
@@ -13,13 +13,13 @@ window.APP = {
   // 5 km), não CORDEX EUR-11 — ver painel "Sobre".
   INDICATORS: {
     precipitacao: { label: "Precipitação total anual", unit: "mm/ano" },
-    temp_media: { label: "Temperatura média anual", unit: "°C" },
-    amplitude_termica: { label: "Amplitude térmica média", unit: "°C" },
+    temp_media: { label: "Temperatura média anual", unit: "°C", legendNote: "Inclui correção local de altitude (DEM)." },
+    amplitude_termica: { label: "Amplitude térmica média", unit: "°C", legendNote: "Amplitude diurna: Tmax menos Tmin." },
     et0: { label: "ET0 (Hargreaves)", unit: "mm/dia" },
     defice_hidrico: { label: "Défice hídrico climático", unit: "mm/ano" },
-    graus_dia_5: { label: "Graus-dia acima de 5°C", unit: "°C·dia/ano" },
-    graus_dia_18: { label: "Graus-dia acima de 18°C", unit: "°C·dia/ano" },
-    dias_sem_geada: { label: "Dias sem geada", unit: "dias/ano" },
+    graus_dia_5: { label: "Graus-dia acima de 5°C", unit: "°C·dia/ano", legendNote: "Soma, ao longo do ano, dos graus acima de 5 °C em cada dia: um dia a 15 °C conta 10." },
+    graus_dia_18: { label: "Graus-dia acima de 18°C", unit: "°C·dia/ano", legendNote: "Soma, ao longo do ano, dos graus acima de 18 °C em cada dia: um dia a 25 °C conta 7. Procura potencial de arrefecimento, não consumo." },
+    dias_sem_geada: { label: "Dias sem geada", unit: "dias/ano", legendNote: "Mais escuro = mais geada. Valores estimados, não contagens." },
   },
 
   // Espelha p1_config.py -> PERIODS/SCENARIOS. Climatologias discretas de
@@ -46,27 +46,40 @@ window.APP = {
   // maxZoom 19 deixa o Leaflet reescalar acima disso (maxNativeZoom).
   BASEMAPS: {
     dark: {
+      land: "#414143", // cor da terra nos tiles, usada nas amostras da legenda
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
       attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
     },
     light: {
+      land: "#efefef",
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
       attribution: "Tiles © Esri — Esri, HERE, Garmin, © OpenStreetMap contributors",
     },
   },
 
-  // Espelha p1_config.py -> COLOR_RAMPS (só os "stops", para a legenda —
-  // a cor de cada banda já vem embutida em properties.fill do GeoJSON).
-  COLOR_RAMPS: {
-    precipitacao: { stops: [[300, "#f7fbff"], [900, "#9ecae1"], [1600, "#3182bd"], [2400, "#08306b"]] },
-    temp_media: { stops: [[0, "#ffffb2"], [8, "#feb24c"], [16, "#f03b20"], [24, "#800026"]] },
-    amplitude_termica: { stops: [[4, "#f2f0f7"], [7, "#bcbddc"], [10, "#807dba"], [14, "#54278f"]] },
-    et0: { stops: [[1.5, "#fff5eb"], [2.3, "#fdae6b"], [3.2, "#e6550d"], [4.0, "#7f2704"]] },
-    defice_hidrico: { stops: [[100, "#f7fcfd"], [450, "#b2e2e2"], [800, "#66c2a4"], [1200, "#006d2c"]] },
-    graus_dia_5: { stops: [[1000, "#ffffe5"], [2800, "#fed976"], [4600, "#f03b20"], [6500, "#800026"]] },
-    graus_dia_18: { stops: [[0, "#f7fcf5"], [750, "#a1d99b"], [1500, "#31a354"], [2300, "#00441b"]] },
-    dias_sem_geada: { stops: [[200, "#fff7ec"], [270, "#fdbe85"], [320, "#e6550d"], [365, "#7f2704"]] },
-  },
+  // Capitais de distrito, em português, por cima das isobandas: os nomes dos
+  // tiles Esri ficam tapados pelo raster e vêm em inglês. Coordenadas do
+  // OpenStreetMap (Nominatim).
+  PLACE_LABELS: [
+    ["Viana do Castelo", 41.718, -8.764],
+    ["Braga", 41.551, -8.428],
+    ["Porto", 41.15, -8.61],
+    ["Vila Real", 41.298, -7.746],
+    ["Bragança", 41.807, -6.759],
+    ["Aveiro", 40.64, -8.654],
+    ["Viseu", 40.657, -7.914],
+    ["Guarda", 40.538, -7.266],
+    ["Coimbra", 40.211, -8.429],
+    ["Leiria", 39.744, -8.807],
+    ["Castelo Branco", 39.827, -7.492],
+    ["Santarém", 39.236, -8.687],
+    ["Lisboa", 38.708, -9.137],
+    ["Setúbal", 38.524, -8.893],
+    ["Portalegre", 39.291, -7.433],
+    ["Évora", 38.571, -7.909],
+    ["Beja", 38.015, -7.865],
+    ["Faro", 37.016, -7.935],
+  ],
 
   PORTUGAL_CENTER: [39.6, -8.0],
   PORTUGAL_ZOOM: 7,

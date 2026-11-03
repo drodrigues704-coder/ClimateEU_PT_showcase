@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#12222f">
+<meta name="description" content="Atlas de indicadores climáticos para Portugal Continental, 1961–2100, a partir do downscaling estatístico ClimateEU.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%2312222f'/%3E%3Cpath d='M3 12l3-7 3 4 2-2 2 5z' fill='%233fa7c9'/%3E%3C/svg%3E">
 <title>ClimateEU PT — Indicadores Climáticos</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,20 +16,22 @@
 </head>
 <body data-mobile-tab="mapa">
 
+<a class="skip-link" href="#sidebar">Saltar para os controlos</a>
+
 <header id="app-header">
   <h1>ClimateEU PT — Indicadores Climáticos</h1>
   <span id="app-subtitle">Portugal Continental — histórico e projeções SSP2-4.5/SSP5-8.5 (ClimateEU, downscaling estatístico)</span>
-  <button id="btn-basemap" type="button" title="Trocar mapa de fundo">🗺 Mapa: Escuro</button>
-  <button id="btn-info" type="button" title="Sobre a app e os indicadores">ℹ Sobre</button>
+  <button id="btn-basemap" type="button" title="Trocar mapa de fundo">Mapa claro</button>
+  <button id="btn-info" type="button" title="Sobre a app e os indicadores">Sobre</button>
 </header>
 
 <div id="app">
 
-  <aside id="sidebar">
+  <aside id="sidebar" tabindex="-1">
 
     <section class="panel">
-      <h2>Indicador</h2>
-      <select id="ctl-indicator">
+      <h2 id="label-indicator">Indicador</h2>
+      <select id="ctl-indicator" aria-labelledby="label-indicator">
         <option value="precipitacao">Precipitação total anual</option>
         <option value="temp_media">Temperatura média anual</option>
         <option value="amplitude_termica">Amplitude térmica média</option>
@@ -53,14 +58,20 @@
           <option value="historico">1961–1990</option>
         </select>
       </label>
+    </section>
+
+    <section class="panel">
+      <h2>Região dos gráficos</h2>
       <div class="row">
         <label><input type="radio" name="region-mode" value="nacional" checked> Portugal Continental (média)</label>
       </div>
       <div class="row">
-        <label><input type="radio" name="region-mode" value="regiao"> Esta região</label>
+        <label><input type="radio" name="region-mode" value="regiao"> Uma região NUTS II</label>
       </div>
       <div id="ctl-nuts2-wrapper" hidden>
-        <select id="ctl-nuts2"><option value="">A carregar…</option></select>
+        <label>Região NUTS II
+          <select id="ctl-nuts2"><option value="">A carregar…</option></select>
+        </label>
       </div>
     </section>
 
@@ -68,24 +79,43 @@
 
   <main id="map"></main>
 
+  <!-- Só em ecrãs estreitos (CSS/style.css): o mapa abre sozinho nesse
+       separador, por isso tem de dizer o que mostra e trazer a legenda. -->
+  <div id="map-summary">
+    <button id="btn-map-summary" type="button" aria-expanded="false" aria-controls="map-legend">
+      <span id="map-summary-text">A carregar…</span>
+      <span class="map-summary-action">Legenda</span>
+    </button>
+    <div id="map-legend" hidden></div>
+  </div>
+
   <aside id="chart-column">
 
     <section id="chart-panel-region" class="panel chart-panel">
-      <h2>Climatologias por período — região selecionada</h2>
+      <h2 id="chart-title-region">Portugal Continental</h2>
+      <p id="chart-error-region" class="chart-error" hidden></p>
       <div class="chart-wrap">
-        <canvas id="chart-series"></canvas>
+        <canvas id="chart-series" role="img" aria-label="Gráfico da região selecionada"></canvas>
       </div>
-      <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; "Início"/"Meados"/"Fim" mostram como SSP2-4.5 e SSP5-8.5 divergem.</p>
+      <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; os períodos seguintes mostram como SSP2-4.5 e SSP5-8.5 divergem.</p>
     </section>
 
     <section id="chart-panel-cell" class="panel chart-panel">
-      <h2>Climatologias por período — ponto clicado</h2>
+      <h2 id="chart-title-cell">Ponto escolhido no mapa</h2>
+      <p id="chart-error-cell" class="chart-error" hidden></p>
       <p id="cell-chart-placeholder" class="note chart-placeholder">Clica num ponto do mapa para veres aqui os dados desse local, à resolução da grelha ClimateEU (blocos de 5 km).</p>
       <div id="cell-chart-body" hidden>
-        <div class="chart-wrap">
-          <canvas id="chart-series-cell"></canvas>
+        <div class="cell-toolbar">
+          <span id="cell-location" class="note"></span>
+          <button id="btn-cell-clear" type="button">Limpar ponto</button>
         </div>
-        <div class="warning">Está a ver o valor de um bloco de 5 km da grelha ClimateEU (1 km nativo, agregado). Não é uma medição física a esta escala — é o resultado de um modelo estatístico sobre GCMs a 100-250 km, distribuído pelo território por relevo. Ver "Sobre" para detalhes.</div>
+        <div class="chart-wrap">
+          <canvas id="chart-series-cell" role="img" aria-label="Gráfico do ponto escolhido"></canvas>
+        </div>
+        <details class="warning">
+          <summary>Valor de um bloco de 5 km, não uma medição</summary>
+          Está a ver o valor de um bloco de 5 km da grelha ClimateEU (1 km nativo, agregado). Não é uma medição física a esta escala — é o resultado de um modelo estatístico sobre GCMs a 100-250 km, distribuído pelo território por relevo. Ver "Sobre" para detalhes.
+        </details>
       </div>
     </section>
 
@@ -100,29 +130,33 @@
      não obrigar o JS a saber em que breakpoint está — quem decide se
      aparece é a CSS. Estado ativo espelhado em <body data-mobile-tab="…">
      (ver f6_ui.js::setMobileTab), não num atributo próprio deste <nav>. -->
-<nav id="mobile-tabs" role="tablist" aria-label="Navegação principal">
-  <button type="button" class="mobile-tab" data-tab="mapa" role="tab" aria-selected="true">
-    <span class="mobile-tab-icon" aria-hidden="true">🗺</span>
+<nav id="mobile-tabs" aria-label="Navegação principal">
+  <button type="button" class="mobile-tab" data-tab="mapa" aria-controls="map" aria-current="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg>
     <span class="mobile-tab-label">Mapa</span>
   </button>
-  <button type="button" class="mobile-tab" data-tab="controlos" role="tab" aria-selected="false">
-    <span class="mobile-tab-icon" aria-hidden="true">⚙</span>
+  <button type="button" class="mobile-tab" data-tab="controlos" aria-controls="sidebar">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
     <span class="mobile-tab-label">Controlos</span>
   </button>
-  <button type="button" class="mobile-tab" data-tab="graficos" role="tab" aria-selected="false">
-    <span class="mobile-tab-icon" aria-hidden="true">📈</span>
+  <button type="button" class="mobile-tab" data-tab="graficos" aria-controls="chart-column">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20h16M7 20v-7M12 20V6M17 20v-10"/></svg>
     <span class="mobile-tab-label">Gráficos</span>
   </button>
 </nav>
 
 <div id="loading-overlay" hidden><div class="spinner"></div></div>
-<div id="error-banner" hidden></div>
+<div id="error-banner" role="alert" hidden>
+  <span id="error-text"></span>
+  <button id="btn-error-close" type="button" aria-label="Fechar aviso"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+<p id="map-status" class="visually-hidden" aria-live="polite"></p>
 
-<div id="info-modal" hidden>
-  <div id="info-modal-card">
-    <button id="btn-info-close" type="button" aria-label="Fechar">✕</button>
+<div id="info-modal" role="dialog" aria-modal="true" aria-labelledby="info-modal-title" hidden>
+  <div id="info-modal-card" tabindex="-1">
+    <button id="btn-info-close" type="button" aria-label="Fechar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 
-    <h2>Sobre esta app</h2>
+    <h2 id="info-modal-title">Sobre esta app</h2>
     <p>
       Indicadores climáticos para <b>Portugal Continental</b>, a partir do
       produto de downscaling estatístico <b>ClimateEU</b>. Mostra, num
@@ -150,9 +184,11 @@
       sucessores conceptuais dos RCP4.5/RCP8.5 usados anteriormente, mas
       não diretamente equivalentes — trajetórias de forçante radiativa e
       famílias de modelos diferentes. O período histórico de referência
-      (1961–1990) não é uma simulação do clima passado, mas sim
-      observações/reanálise interpoladas no espaço, pelo que a
-      comparação histórico→futuro mistura duas naturezas de dados
+      (1961–1990) não é uma simulação do clima passado, mas sim uma
+      normal climática interpolada no espaço. Os metadados dos ficheiros
+      não identificam a fonte exata (a documentação do ClimateEU refere
+      CRU-TS ou ERA5-Land, conforme a versão). A comparação
+      histórico→futuro mistura, por isso, duas naturezas de dados
       diferentes.
     </p>
 
@@ -189,7 +225,8 @@
     <h3>Os cenários e períodos</h3>
     <p>
       <b>Histórico</b> (1961–1990) representa o clima passado recente,
-      a partir de observações/reanálise, para servir de referência.
+      a partir de uma normal climática interpolada, para servir de
+      referência.
       <b>SSP2-4.5</b> e <b>SSP5-8.5</b> são duas trajetórias possíveis de
       emissões e concentração de gases com efeito de estufa até 2100 —
       SSP2-4.5 assume uma trajetória de desenvolvimento intermédia;
@@ -205,7 +242,7 @@
 
     <h3>A correção de elevação (DEM) em temperatura</h3>
     <p>
-      Para <b>temperatura média anual</b> e <b>amplitude térmica média</b>,
+      Para a <b>temperatura média anual</b>,
       a app aplica uma correção local de temperatura usando um modelo de
       elevação do terreno (DEM) de 25 m de Portugal e uma taxa de
       arrefecimento ambiental padrão de -6.5°C/km, para captar melhor o
@@ -213,10 +250,11 @@
       Estrela) que a grelha de 1 km por si só suaviza. É uma correção
       cartográfica local — uma técnica estabelecida na literatura de
       downscaling topoclimático — não uma resimulação física, e não deve
-      ser lida como "mais precisa" em termos absolutos. Não se aplica aos
-      restantes indicadores (precipitação, ET0, défice hídrico,
-      graus-dia, dias sem geada), por não fazer sentido dimensionalmente
-      para esses campos.
+      ser lida como "mais precisa" em termos absolutos. Não se aplica à
+      <b>amplitude térmica</b>, porque a mesma correção em Tmax e Tmin se
+      cancela na diferença, nem aos restantes indicadores (precipitação,
+      ET0, défice hídrico, graus-dia, dias sem geada), por não fazer
+      sentido dimensionalmente para esses campos.
     </p>
 
     <h3>Como ler o mapa e o gráfico</h3>
@@ -224,11 +262,12 @@
       O mapa mostra a média espacial do indicador escolhido, para o
       cenário e período escolhidos, como áreas coloridas (isobandas) —
       não pontos de estações nem pixels individuais da grelha. A legenda
-      junto ao seletor de indicador mostra a escala de cores em uso. Em
-      "Cenário e período" pode escolher ver o gráfico do indicador para
-      <b>Portugal Continental (média)</b> ou para <b>esta região</b> — a
-      região NUTS II escolhida no seletor da barra lateral, não por
-      clique no mapa. O gráfico mostra barras agrupadas por período, não
+      junto ao seletor de indicador mostra as classes em uso, iguais em
+      todos os cenários. Em "Região dos gráficos" pode escolher ver o
+      gráfico do indicador para <b>Portugal Continental (média)</b> ou
+      para <b>uma região NUTS II</b>, escolhida no seletor da barra
+      lateral, não por clique no mapa. O endereço da página guarda a vista
+      atual, para a poder partilhar. O gráfico mostra barras agrupadas por período, não
       uma linha — são climatologias discretas de 30 anos, não uma série
       anual contínua.
     </p>
@@ -251,7 +290,8 @@
       treinada sobre 8 modelos globais CMIP6, com correção de relevo),
       grelha nativa de 1 km, agregada aqui a blocos de 5 km. Cenários
       SSP2-4.5 e SSP5-8.5; período histórico de referência 1961–1990 a
-      partir de observações/reanálise interpoladas no espaço.
+      partir de uma normal climática interpolada no espaço, cuja fonte
+      exata não está identificada nos metadados.
     </p>
   </div>
 </div>
@@ -266,13 +306,13 @@
      Cache-Control: no-store para todo o frontend estático; o
      export_showcase.py substitui "?v=1" por um hash do conteúdo atual
      dos .js de cada vez que exporta. -->
-<script src="js/f1_config.js?v=44e169aaf7"></script>
-<script src="js/f2_map.js?v=44e169aaf7"></script>
-<script src="js/f3_controls.js?v=44e169aaf7"></script>
-<script src="js/f4_raster.js?v=44e169aaf7"></script>
-<script src="js/f5_charts.js?v=44e169aaf7"></script>
-<script src="js/f6_ui.js?v=44e169aaf7"></script>
-<script src="js/f7_main.js?v=44e169aaf7"></script>
+<script src="js/f1_config.js?v=afc2e014ae"></script>
+<script src="js/f2_map.js?v=afc2e014ae"></script>
+<script src="js/f3_controls.js?v=afc2e014ae"></script>
+<script src="js/f4_raster.js?v=afc2e014ae"></script>
+<script src="js/f5_charts.js?v=afc2e014ae"></script>
+<script src="js/f6_ui.js?v=afc2e014ae"></script>
+<script src="js/f7_main.js?v=afc2e014ae"></script>
 
 </body>
 </html>

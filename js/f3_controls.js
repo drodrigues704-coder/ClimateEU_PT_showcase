@@ -8,8 +8,11 @@
 (function () {
   let changeCallbacks = [];
 
+  const PERIOD_NAMES = { inicio: "início do século", meados: "meados do século", fim: "fim do século" };
+
   function periodLabel(period) {
-    return `${window.APP.PERIOD_LABELS[period]}${period !== "historico" ? " (" + period + ")" : ""}`;
+    const name = PERIOD_NAMES[period];
+    return name ? `${window.APP.PERIOD_LABELS[period]} (${name})` : window.APP.PERIOD_LABELS[period];
   }
 
   function refreshPeriodOptions() {
@@ -48,7 +51,7 @@
     // Mesma lógica para o placeholder "A carregar…" de ctl-nuts2.
     const nuts2Select = document.getElementById("ctl-nuts2");
     nuts2Select.innerHTML = "";
-    nuts2Regions.forEach((region) => {
+    [...nuts2Regions].sort((a, b) => a.nuts2.localeCompare(b.nuts2, "pt-PT")).forEach((region) => {
       const opt = document.createElement("option");
       opt.value = region.codigo;
       opt.textContent = region.nuts2;
@@ -70,6 +73,24 @@
         changeCallbacks.forEach((cb) => cb(window.APP.getSelection()));
       });
     });
+  };
+
+  // Aplica uma seleção vinda de uma ligação partilhada (f7_main.js), sem
+  // disparar callbacks. Valores que não existem são ignorados: um endereço
+  // antigo ou escrito à mão nunca chega a pedir dados inexistentes.
+  window.APP.applySelection = function applySelection({ indicator, scenario, period, regionCode }) {
+    if (Object.hasOwn(window.APP.INDICATORS, indicator ?? "")) document.getElementById("ctl-indicator").value = indicator;
+    if (Object.hasOwn(window.APP.SCENARIO_PERIODS, scenario ?? "")) {
+      document.getElementById("ctl-scenario").value = scenario;
+      refreshPeriodOptions();
+      if (window.APP.SCENARIO_PERIODS[scenario].includes(period)) document.getElementById("ctl-period").value = period;
+    }
+    const nuts2Select = document.getElementById("ctl-nuts2");
+    if ([...nuts2Select.options].some((opt) => opt.value === regionCode)) {
+      nuts2Select.value = regionCode;
+      document.querySelector('input[name="region-mode"][value="regiao"]').checked = true;
+      refreshRegionVisibility();
+    }
   };
 
   window.APP.getSelection = function getSelection() {

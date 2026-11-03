@@ -9,6 +9,18 @@
 // ============================================================================
 
 (function () {
+  // Sem isto o Chart.js usa #666 e grelha quase preta, ilegíveis no painel
+  // escuro (2,82:1 medido), e a sua fonte por omissão em vez da IBM Plex.
+  // A guarda mantém o resto da app a funcionar se o CDN do Chart.js não
+  // carregar; fetchAndDraw avisa e não desenha.
+  if (window.Chart) {
+    const rootStyle = getComputedStyle(document.documentElement);
+    Chart.defaults.color = rootStyle.getPropertyValue("--text-dim").trim();
+    Chart.defaults.borderColor = rootStyle.getPropertyValue("--panel-border").trim();
+    Chart.defaults.font.family = rootStyle.getPropertyValue("--font-body").trim();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) Chart.defaults.animation = false;
+  }
+
   // 2 painéis independentes (região selecionada / célula clicada, ver
   // f7_main.js e index.html) — cada um com o seu próprio canvas e a sua
   // própria instância de Chart.js, para poderem estar visíveis os dois ao
@@ -16,6 +28,9 @@
   // a sobrepor transitoriamente a série regional).
   const CANVAS_IDS = { region: "chart-series", cell: "chart-series-cell" };
   const chartInstances = { region: null, cell: null };
+  const latestRequest = { region: 0, cell: 0 };
+  const CHART_LIBRARY_MESSAGE = "Não foi possível carregar a biblioteca dos gráficos. Verifica a ligação e recarrega a página. O mapa continua a funcionar.";
+  const numberFormat = new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 2 });
 
   const PERIOD_ORDER = ["historico", "inicio", "meados", "fim"];
   const HIST_COLOR = "#a3a3a3";
@@ -59,13 +74,27 @@
   // da grelha (renderChartForCell), que só diferem no endpoint pedido e no
   // slot ("region"/"cell", ver CANVAS_IDS/chartInstances acima) em que
   // desenham, para os 2 painéis poderem coexistir.
-  function drawChart(series, indicator, slot) {
+  function describeSeries(series, datasets, labels, unit) {
+    const parts = [];
+    datasets.forEach((dataset) => {
+      dataset.data.forEach((value, i) => {
+        if (value != null) parts.push(`${dataset.label}, ${labels[i]}: ${numberFormat.format(value)} ${unit}`);
+      });
+    });
+    return parts.join("; ");
+  }
+
+  function drawChart(series, indicator, slot, placeName) {
     const labels = PERIOD_ORDER.map((p) => window.APP.PERIOD_LABELS[p]);
     const datasets = buildDatasets(series);
     const unit = window.APP.INDICATORS[indicator].unit;
 
     if (chartInstances[slot]) chartInstances[slot].destroy();
-    const ctx = document.getElementById(CANVAS_IDS[slot]).getContext("2d");
+    const { label: indicatorLabel } = window.APP.INDICATORS[indicator];
+    document.getElementById(`chart-title-${slot}`).textContent = `${indicatorLabel} — ${placeName}`;
+    const canvas = document.getElementById(CANVAS_IDS[slot]);
+    canvas.setAttribute("aria-label", `${indicatorLabel}, ${placeName}. ${describeSeries(series, datasets, labels, unit)}`);
+    const ctx = canvas.getContext("2d");
     chartInstances[slot] = new Chart(ctx, {
       type: "bar",
       data: { labels, datasets },
@@ -85,7 +114,14 @@
             // rótulos inclinados em ecrã real. A coluna de gráficos mais
             // larga (ver #chart-column em style.css) dá espaço extra para
             // caberem sem sobreposição.
-            ticks: { maxRotation: 0, minRotation: 0 },
+            // Letra mais pequena em ecrãs estreitos: os 4 rótulos ficam sempre
+            // visíveis e, a 12 px, colavam-se a 375 px de largura.
+            ticks: {
+              maxRotation: 0,
+              minRotation: 0,
+              autoSkip: false,
+              font: { size: window.matchMedia("(max-width: 1000px)").matches ? 10 : 12 },
+            },
           },
           y: { title: { display: true, text: unit } },
         },
@@ -111,26 +147,45 @@
     });
   }
 
-  // Busca meta+GeoJSON/JSON num endpoint no padrão {path,url} (mesmo
-  // padrão de renderRaster em f4_raster.js) e desenha o gráfico no slot
-  // indicado. `notFoundMessage`/`emptyMessage` só entram nas mensagens de
-  // erro, para distinguir região vs. célula.
-  async function fetchAndDraw(endpointPath, indicator, slot, notFoundMessage, emptyMessage) {
+  function setChartError(slot, message) {
+    const element = document.getElementById(`chart-error-${slot}`);
+    element.textContent = message || "";
+    element.hidden = !message;
+  }
+
+  // Busca meta+GeoJSON/JSON num endpoint no padrão {path,url} (mesmo padrão de
+  // renderRaster em f4_raster.js) e desenha o gráfico no slot indicado. Devolve
+  // a série, ou null se o pedido falhou ou já não é o mais recente deste slot.
+  async function fetchAndDraw(endpointPath, indicator, slot, placeName) {
+    const request = ++latestRequest[slot];
     if (window.APP.showLoading) window.APP.showLoading();
     try {
       const metaRes = await fetch(`${window.APP.API_BASE}${endpointPath}`);
-      if (!metaRes.ok) throw new Error(`${notFoundMessage} (HTTP ${metaRes.status})`);
+      if (!metaRes.ok) throw new Error(`${endpointPath}: HTTP ${metaRes.status}`);
       const meta = await metaRes.json();
 
       const seriesRes = await fetch(meta.url);
       const allIndicators = await seriesRes.json();
       const series = allIndicators[indicator];
-      if (!series) throw new Error(emptyMessage);
+      if (!series) throw new Error(`${endpointPath}: sem dados de ${indicator}`);
+      if (request !== latestRequest[slot]) return null;
 
-      drawChart(series, indicator, slot);
+      // Devolve a série mesmo sem biblioteca: o valor no popup não precisa dela.
+      if (window.Chart) {
+        drawChart(series, indicator, slot, placeName);
+        setChartError(slot, null);
+      } else {
+        setChartError(slot, CHART_LIBRARY_MESSAGE);
+        if (window.APP.showError) window.APP.showError(CHART_LIBRARY_MESSAGE);
+      }
+      return series;
     } catch (err) {
-      if (window.APP.showError) window.APP.showError(err.message);
       console.error(err);
+      // Fica no painel: a mensagem tem de sobreviver ao fecho do aviso geral.
+      if (request === latestRequest[slot]) {
+        setChartError(slot, "Não foi possível carregar os dados deste gráfico. Recarrega a página para tentar outra vez.");
+      }
+      return null;
     } finally {
       if (window.APP.hideLoading) window.APP.hideLoading();
     }
@@ -138,35 +193,27 @@
 
   // Painel 1 (sempre visível): série da região/nacional escolhida nos
   // seletores da sidebar.
-  window.APP.renderChart = function renderChart(indicator, regionCode) {
-    return fetchAndDraw(
-      `/series/${regionCode}`,
-      indicator,
-      "region",
-      `Sem série para a região '${regionCode}'`,
-      `Sem dados de '${indicator}' para esta região`
-    );
+  window.APP.renderChart = function renderChart(indicator, regionCode, regionName) {
+    return fetchAndDraw(`/series/${regionCode}`, indicator, "region", regionName);
   };
 
-  // Painel 2 (só depois de um clique no mapa): série de uma célula
-  // individual da grelha ClimateEU (blocos de 5 km) — painel próprio, não
-  // uma sobreposição do painel 1 (ver f7_main.js). Antes de desenhar,
-  // troca o placeholder pelo conteúdo real (idempotente: chamado de novo
-  // em cada clique/mudança de indicador só repete o mesmo troca, sem
-  // efeito colateral visível).
+  // Painel 2 (só depois de um clique no mapa): série de uma célula individual
+  // da grelha ClimateEU (blocos de 5 km) — painel próprio, não uma sobreposição
+  // do painel 1 (ver f7_main.js).
   window.APP.renderChartForCell = function renderChartForCell(indicator, cellId) {
-    const placeholder = document.getElementById("cell-chart-placeholder");
-    const body = document.getElementById("cell-chart-body");
-    if (placeholder) placeholder.hidden = true;
-    if (body) body.hidden = false;
+    document.getElementById("cell-chart-placeholder").hidden = true;
+    document.getElementById("cell-chart-body").hidden = false;
+    return fetchAndDraw(`/cells/${cellId}`, indicator, "cell", "ponto escolhido");
+  };
 
-    return fetchAndDraw(
-      `/cells/${cellId}`,
-      indicator,
-      "cell",
-      `Sem série para a célula '${cellId}'`,
-      `Sem dados de '${indicator}' para esta célula`
-    );
+  window.APP.clearCellChart = function clearCellChart() {
+    latestRequest.cell += 1;
+    if (chartInstances.cell) chartInstances.cell.destroy();
+    chartInstances.cell = null;
+    setChartError("cell", null);
+    document.getElementById("chart-title-cell").textContent = "Ponto escolhido no mapa";
+    document.getElementById("cell-chart-placeholder").hidden = false;
+    document.getElementById("cell-chart-body").hidden = true;
   };
 
   // Chamada pela navegação por separadores mobile (ver
