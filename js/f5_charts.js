@@ -49,32 +49,38 @@
     const ssp245 = series.ssp245 || {};
     const ssp585 = series.ssp585 || {};
 
+    // Contorno na barra do cenário e período que o mapa está a mostrar.
+    const { scenario, period } = window.APP.getSelection();
+    const selectedOutline = getComputedStyle(document.documentElement).getPropertyValue("--text").trim();
+    const borderWidthFor = (datasetScenario) => (ctx) =>
+      datasetScenario === scenario && PERIOD_ORDER[ctx.dataIndex] === period ? 2 : 0;
+
     return [
       {
         label: window.APP.SCENARIO_LABELS.historico,
         data: PERIOD_ORDER.map((p) => (p === "historico" ? hist : null)),
         backgroundColor: HIST_COLOR,
+        borderColor: selectedOutline,
+        borderWidth: borderWidthFor("historico"),
       },
       {
         label: window.APP.SCENARIO_LABELS.ssp245,
         data: PERIOD_ORDER.map((p) => (p === "historico" ? null : ssp245[p] ?? null)),
         backgroundColor: SSP245_COLOR,
+        borderColor: selectedOutline,
+        borderWidth: borderWidthFor("ssp245"),
       },
       {
         label: window.APP.SCENARIO_LABELS.ssp585,
         data: PERIOD_ORDER.map((p) => (p === "historico" ? null : ssp585[p] ?? null)),
         backgroundColor: SSP585_COLOR,
+        borderColor: selectedOutline,
+        borderWidth: borderWidthFor("ssp585"),
       },
     ];
   }
 
-  // Lógica partilhada de construção do Chart.js a partir de um objeto
-  // "série" já resolvido (allIndicators[indicator]) — usada tanto pela
-  // série regional (renderChart) como pela série de uma célula individual
-  // da grelha (renderChartForCell), que só diferem no endpoint pedido e no
-  // slot ("region"/"cell", ver CANVAS_IDS/chartInstances acima) em que
-  // desenham, para os 2 painéis poderem coexistir.
-  function describeSeries(series, datasets, labels, unit) {
+  function describeSeries(datasets, labels, unit) {
     const parts = [];
     datasets.forEach((dataset) => {
       dataset.data.forEach((value, i) => {
@@ -84,6 +90,12 @@
     return parts.join("; ");
   }
 
+  // Lógica partilhada de construção do Chart.js a partir de um objeto
+  // "série" já resolvido (allIndicators[indicator]) — usada tanto pela
+  // série regional (renderChart) como pela série de uma célula individual
+  // da grelha (renderChartForCell), que só diferem no endpoint pedido e no
+  // slot ("region"/"cell", ver CANVAS_IDS/chartInstances acima) em que
+  // desenham, para os 2 painéis poderem coexistir.
   function drawChart(series, indicator, slot, placeName) {
     const labels = PERIOD_ORDER.map((p) => window.APP.PERIOD_LABELS[p]);
     const datasets = buildDatasets(series);
@@ -93,7 +105,7 @@
     const { label: indicatorLabel } = window.APP.INDICATORS[indicator];
     document.getElementById(`chart-title-${slot}`).textContent = `${indicatorLabel} — ${placeName}`;
     const canvas = document.getElementById(CANVAS_IDS[slot]);
-    canvas.setAttribute("aria-label", `${indicatorLabel}, ${placeName}. ${describeSeries(series, datasets, labels, unit)}`);
+    canvas.setAttribute("aria-label", `${indicatorLabel}, ${placeName}. ${describeSeries(datasets, labels, unit)}`);
     const ctx = canvas.getContext("2d");
     chartInstances[slot] = new Chart(ctx, {
       type: "bar",
@@ -114,13 +126,16 @@
             // rótulos inclinados em ecrã real. A coluna de gráficos mais
             // larga (ver #chart-column em style.css) dá espaço extra para
             // caberem sem sobreposição.
-            // Letra mais pequena em ecrãs estreitos: os 4 rótulos ficam sempre
-            // visíveis e, a 12 px, colavam-se a 375 px de largura.
+            // Letra mais pequena em gráficos estreitos (telemóvel, comparação): os
+            // 4 rótulos ficam sempre visíveis, sem se sobreporem.
             ticks: {
               maxRotation: 0,
               minRotation: 0,
               autoSkip: false,
-              font: { size: window.matchMedia("(max-width: 1000px)").matches ? 10 : 12 },
+              font: (ctx) => {
+                const { width } = ctx.chart;
+                return { size: width < 300 ? 9 : width < 420 ? 10 : 12 };
+              },
             },
           },
           y: { title: { display: true, text: unit } },
@@ -152,7 +167,8 @@
     link.href = URL.createObjectURL(blob);
     link.download = filename;
     link.click();
-    URL.revokeObjectURL(link.href);
+    // Não logo a seguir ao clique: o Safari em iOS ainda precisa do endereço.
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   }
 
   function seriesRows(indicator, place, series) {
@@ -209,14 +225,23 @@
 
   const slugify = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+  const PNG_SCALE = 4;
+
   // Último gráfico desenhado por painel, para o nome do ficheiro PNG.
   const lastDrawn = { region: null, cell: null };
 
   // O canvas do Chart.js tem fundo transparente e texto claro, ilegível num
   // documento branco: o PNG leva o fundo do painel, o título e a fonte.
-  function downloadChartPng(slot) {
-    const chart = chartInstances[slot];
-    chart.update("none"); // acaba a animação, para não sair um gráfico a meio
+  function fitFontSize(ctx, text, maxWidth, size, weight, fontFamily, minSize) {
+    let current = size;
+    ctx.font = `${weight} ${current}px ${fontFamily}`;
+    while (ctx.measureText(text).width > maxWidth && current > minSize) {
+      current -= size / 30;
+      ctx.font = `${weight} ${current}px ${fontFamily}`;
+    }
+  }
+
+  function composeChartPng(chart, slot) {
     const source = chart.canvas;
     const scale = source.width / source.clientWidth;
     const style = getComputedStyle(document.documentElement);
@@ -233,24 +258,43 @@
     ctx.fillRect(0, 0, output.width, output.height);
     ctx.drawImage(source, margin, header);
 
+    const maxTextWidth = output.width - margin * 2;
     const title = document.getElementById(`chart-title-${slot}`).textContent;
-    let titleSize = 15 * scale;
     ctx.textBaseline = "middle";
-    do {
-      ctx.font = `600 ${titleSize}px ${fontFamily}`;
-      titleSize -= scale / 2;
-    } while (ctx.measureText(title).width > output.width - margin * 2 && titleSize > 8 * scale);
+    fitFontSize(ctx, title, maxTextWidth, 15 * scale, 600, fontFamily, 8 * scale);
     ctx.fillStyle = style.getPropertyValue("--text").trim();
     ctx.fillText(title, margin, header / 2);
 
     const place = slot === "cell" ? `${document.getElementById("cell-location").textContent}. ` : "";
-    ctx.font = `${11 * scale}px ${fontFamily}`;
+    const source_note = `${place}Climatologias de 30 anos. Fonte: ClimateEU.`;
+    fitFontSize(ctx, source_note, maxTextWidth, 11 * scale, 400, fontFamily, 6 * scale);
     ctx.fillStyle = style.getPropertyValue("--text-dim").trim();
-    ctx.fillText(`${place}Climatologias de 30 anos. Fonte: ClimateEU.`, margin, output.height - footer / 2);
+    ctx.fillText(source_note, margin, output.height - footer / 2);
+    return output;
+  }
 
+  // Redesenha em alta resolução, sem animação, só durante a cópia: a resolução do
+  // ecrã (373 px de largura a 100%) não serve para relatórios nem impressão.
+  function downloadChartPng(slot) {
+    const chart = chartInstances[slot];
     const { indicator, placeName } = lastDrawn[slot];
     const suffix = slot === "cell" ? `ponto_${cellExport.cellId}` : slugify(placeName);
-    output.toBlob((blob) => saveFile(blob, `climateeu_pt_${indicator}_${suffix}.png`), "image/png");
+    let output;
+    try {
+      chart.stop();
+      chart.options.devicePixelRatio = PNG_SCALE;
+      chart.resize();
+      chart.update("none");
+      output = composeChartPng(chart, slot);
+    } catch (err) {
+      console.error(err);
+      window.APP.showError("Não foi possível preparar a imagem do gráfico. Recarrega a página para tentar outra vez.");
+    } finally {
+      chart.options.devicePixelRatio = undefined; // volta a seguir o ecrã
+      chart.resize();
+      chart.update("none");
+    }
+    if (output) output.toBlob((blob) => saveFile(blob, `climateeu_pt_${indicator}_${suffix}.png`), "image/png");
   }
 
   document.getElementById("btn-csv").addEventListener("click", downloadNuts2Csv);
@@ -298,6 +342,10 @@
       // Fica no painel: a mensagem tem de sobreviver ao fecho do aviso geral.
       if (request === latestRequest[slot]) {
         setChartError(slot, "Não foi possível carregar os dados deste gráfico. Recarrega a página para tentar outra vez.");
+        // Sem o gráfico anterior à vista, com um título ou coordenadas que já não são dele.
+        if (chartInstances[slot]) chartInstances[slot].destroy();
+        chartInstances[slot] = null;
+        document.getElementById(`btn-png-${slot}`).disabled = true;
       }
       return null;
     } finally {
@@ -317,6 +365,11 @@
   window.APP.renderChartForCell = async function renderChartForCell(indicator, cellId) {
     document.getElementById("cell-chart-placeholder").hidden = true;
     document.getElementById("cell-chart-body").hidden = false;
+    // As coordenadas já são as do ponto novo: exportar agora juntava-as aos valores
+    // do ponto anterior.
+    cellExport = null;
+    document.getElementById("btn-csv-cell").disabled = true;
+    document.getElementById("btn-png-cell").disabled = true;
     const series = await fetchAndDraw(`/cells/${cellId}`, indicator, "cell", "ponto escolhido");
     if (series) {
       cellExport = { series, indicator, cellId };

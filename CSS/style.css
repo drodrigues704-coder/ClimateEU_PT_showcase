@@ -201,7 +201,7 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
 }
 
 .chart-panel {
-  flex: 1 1 0;
+  flex: 1 0 auto; /* em janelas baixas a coluna faz scroll, em vez de esmagar os gráficos */
   min-height: 220px;
   display: flex;
   flex-direction: column;
@@ -216,7 +216,12 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
 .chart-wrap {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 170px;
+}
+/* Fora do fluxo: o tamanho do canvas não pode decidir a altura do contentor. */
+.chart-wrap canvas {
+  position: absolute;
+  inset: 0;
 }
 
 /* Painel 2 antes do primeiro clique — mesmo tom/discrição do resto dos
@@ -244,7 +249,6 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-height: 0;
 }
 
 #loading-overlay {
@@ -666,14 +670,12 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
   .cell-card-charts { display: block; min-height: 44px; }
   .cell-card-close { width: 44px; height: 44px; top: 0; right: 0; }
   /* Por cima da atribuição do mapa, que em telemóvel ocupa 2 linhas. */
-  .leaflet-bottom.leaflet-left .cell-card { margin-bottom: 44px; }
   details.warning summary { padding: 14px 0; }
 }
 /* Telemóvel deitado: o cartão não pode tapar o mapa quase todo. */
 @media (max-height: 500px) {
   .cell-card .note { display: none; }
   .cell-card-charts { display: none; }
-  .leaflet-bottom.leaflet-left .cell-card { margin-bottom: 24px; }
 }
 
 .cell-toolbar {
@@ -733,14 +735,6 @@ details.warning summary { cursor: pointer; }
    Medido com Playwright: alargar os tiles também as criava com escala de 100%. */
 .leaflet-tile-loaded { outline: 1px solid transparent; }
 
-/* Telemóvel deitado: resumo a um canto, para o mapa aproveitar a altura. */
-@media (max-width: 1000px) and (max-height: 500px) {
-  body[data-mobile-tab="mapa"] #map-summary {
-    left: auto;
-    width: 300px;
-  }
-}
-
 /* =============================================================================
    EXPORTAÇÃO E COMPARAÇÃO
    ============================================================================= */
@@ -774,7 +768,19 @@ button:disabled { opacity: 0.5; cursor: default; }
   font-weight: 500;
 }
 
+.compare-caption:empty,
+body:not(.comparing) .compare-caption { display: none; }
+
+/* Com 2 mapas, o cartão do ponto tem de caber no principal, com o × acessível. */
+body.comparing .cell-card {
+  width: auto;
+  max-width: calc(50vw - 20px);
+}
+
 @media (min-width: 1001px) {
+  body.comparing .cell-card {
+    max-width: min(260px, calc((100vw - 620px) / 2 - 20px));
+  }
   body.comparing #app {
     grid-template-columns: 280px 1fr 1fr 340px;
     grid-template-areas: "sidebar map compare charts";
@@ -795,7 +801,6 @@ button:disabled { opacity: 0.5; cursor: default; }
     width: 50%;
     height: 100%;
   }
-  .leaflet-top.leaflet-right .compare-caption { margin-top: 64px; }
   .btn-export { min-height: 44px; }
   #sidebar input[type="checkbox"] {
     width: 20px;
@@ -803,4 +808,31 @@ button:disabled { opacity: 0.5; cursor: default; }
     flex: 0 0 auto;
     margin-right: 8px;
   }
+}
+
+/* Com o resumo por cima do mapa (telemóvel ao alto), as legendas dos 2 mapas ficam
+   abaixo dele. */
+@media (max-width: 1000px) and (min-height: 501px) {
+  .leaflet-top .compare-caption { margin-top: 64px; }
+}
+
+/* Telemóvel deitado: o país fica ao centro e o resumo a um canto, sem o tapar. */
+@media (max-width: 1000px) and (max-height: 500px) {
+  body[data-mobile-tab="mapa"] #map-summary {
+    left: auto;
+    width: 220px;
+  }
+  #map-legend .note { display: none; }
+  #map-legend { max-height: calc(100vh - 170px); }
+  .compare-caption {
+    max-width: 76px;
+    margin-top: 6px;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+  }
+  /* Com 2 mapas não há largura para o texto, e cada mapa já diz o que mostra. */
+  body.comparing[data-mobile-tab="mapa"] #map-summary { width: auto; }
+  body.comparing #map-summary-text { display: none; }
+  body.comparing #btn-map-summary { width: auto; margin-left: auto; }
+  body.comparing #map-legend { width: 200px; }
 }

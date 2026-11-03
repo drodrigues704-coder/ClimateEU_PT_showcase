@@ -114,7 +114,7 @@
       <div class="chart-wrap">
         <canvas id="chart-series" role="img" aria-label="Gráfico da região selecionada"></canvas>
       </div>
-      <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; os períodos seguintes mostram como SSP2-4.5 e SSP5-8.5 divergem.</p>
+      <p class="note chart-note">Cada grupo é uma climatologia de 30 anos, não um ano — não uma série contínua. "Histórico" é comum aos 2 cenários; os períodos seguintes mostram como SSP2-4.5 e SSP5-8.5 divergem. A barra com contorno é a que o mapa está a mostrar.</p>
       <div class="chart-actions">
         <button id="btn-csv" class="btn-export" type="button" disabled>CSV (regiões NUTS II)</button>
         <button id="btn-png-region" class="btn-export" type="button" disabled>Gráfico PNG</button>
@@ -187,6 +187,23 @@
       duas trajetórias de emissões futuras, e, por NUTS II ou para o país
       inteiro, os valores desse indicador nas climatologias disponíveis
       (histórico e 3 períodos futuros) — não uma série anual contínua.
+    </p>
+
+    <h3>Como ler o mapa e o gráfico</h3>
+    <p>
+      O mapa mostra a média espacial do indicador escolhido, para o
+      cenário e período escolhidos, como áreas coloridas (isobandas) —
+      não pontos de estações nem pixels individuais da grelha. Ao escolher
+      uma região NUTS II, o mapa mostra só essa região e fica preso a ela. A legenda
+      junto ao seletor de indicador mostra as classes em uso, iguais em
+      todos os cenários. Em "Região" pode escolher ver o
+      gráfico do indicador para <b>Portugal Continental</b> ou
+      para <b>uma região NUTS II</b>, escolhida no seletor da barra
+      lateral, não por clique no mapa. O endereço da página guarda a vista
+      atual, para a poder partilhar. Em "Comparar" pode ver outro cenário ao
+      lado, com as mesmas classes de cor; esse mapa segue o principal. O gráfico mostra barras agrupadas por período, não
+      uma linha — são climatologias discretas de 30 anos, não uma série
+      anual contínua.
     </p>
 
     <h3>Nota de metodologia: de onde vêm os dados futuros</h3>
@@ -280,23 +297,6 @@
       sentido dimensionalmente para esses campos.
     </p>
 
-    <h3>Como ler o mapa e o gráfico</h3>
-    <p>
-      O mapa mostra a média espacial do indicador escolhido, para o
-      cenário e período escolhidos, como áreas coloridas (isobandas) —
-      não pontos de estações nem pixels individuais da grelha. Ao escolher
-      uma região NUTS II, o mapa mostra só essa região e fica preso a ela. A legenda
-      junto ao seletor de indicador mostra as classes em uso, iguais em
-      todos os cenários. Em "Região" pode escolher ver o
-      gráfico do indicador para <b>Portugal Continental</b> ou
-      para <b>uma região NUTS II</b>, escolhida no seletor da barra
-      lateral, não por clique no mapa. O endereço da página guarda a vista
-      atual, para a poder partilhar. Em "Comparar" pode ver outro cenário ao
-      lado, com as mesmas classes de cor; esse mapa segue o principal. O gráfico mostra barras agrupadas por período, não
-      uma linha — são climatologias discretas de 30 anos, não uma série
-      anual contínua.
-    </p>
-
     <h3>Clicar num bloco da grelha</h3>
     <p>
       Está a ver o valor de um bloco de 5 km da grelha ClimateEU (1 km
@@ -331,14 +331,14 @@
      Cache-Control: no-store para todo o frontend estático; o
      export_showcase.py substitui "?v=1" por um hash do conteúdo atual
      dos .js de cada vez que exporta. -->
-<script src="js/f1_config.js?v=a94deb7610"></script>
-<script src="js/f2_map.js?v=a94deb7610"></script>
-<script src="js/f3_controls.js?v=a94deb7610"></script>
-<script src="js/f4_raster.js?v=a94deb7610"></script>
-<script src="js/f5_charts.js?v=a94deb7610"></script>
-<script src="js/f6_ui.js?v=a94deb7610"></script>
-<script src="js/f7_main.js?v=a94deb7610"></script>
-<script src="js/f8_compare.js?v=a94deb7610"></script>
+<script src="js/f1_config.js?v=4f4f1460c5"></script>
+<script src="js/f2_map.js?v=4f4f1460c5"></script>
+<script src="js/f3_controls.js?v=4f4f1460c5"></script>
+<script src="js/f4_raster.js?v=4f4f1460c5"></script>
+<script src="js/f5_charts.js?v=4f4f1460c5"></script>
+<script src="js/f6_ui.js?v=4f4f1460c5"></script>
+<script src="js/f7_main.js?v=4f4f1460c5"></script>
+<script src="js/f8_compare.js?v=4f4f1460c5"></script>
 
 </body>
 </html>

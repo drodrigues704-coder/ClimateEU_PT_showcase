@@ -32,7 +32,7 @@
   const MAX_REGION_CELL_PICK_KM = 10;
   const KM_PER_DEGREE = 111.32;
   // Só o ponto escolhido fica visível, para se saber o que foi consultado.
-  const CELL_MARKER_STYLE = { radius: 7, color: "#ffffff", weight: 2, fillColor: "#3fa7c9", fillOpacity: 1, interactive: false };
+  const CELL_MARKER_STYLE = window.APP.CELL_MARKER_STYLE = { radius: 7, color: "#ffffff", weight: 2, fillColor: "#3fa7c9", fillOpacity: 1, interactive: false };
 
   // Margem do enquadramento (px por lado). Em ecrãs estreitos, a vertical deixa
   // livres o resumo em cima e a atribuição em baixo; é igual nos 2 lados para o
@@ -42,7 +42,8 @@
   // Folga à volta da extensão onde a câmara fica presa: a mesma fração da
   // região ou do país, para a linha de costa não ficar colada ao limite.
   const CAMERA_BOUNDS_PADDING = 0.05;
-  const MIN_LABELS_ZOOM = 5.75;
+  const MIN_LABELS_ZOOM = window.APP.MIN_LABELS_ZOOM = 5.75;
+  const LATE_ZOOM_MS = 100; // bem mais do que uma frame, bem menos do que um gesto novo
 
   let cellClickCallbacks = [];
   let cellsReadyCallbacks = [];
@@ -93,6 +94,7 @@
       if (!x || !y) return;
       const frame = needsFraming || map.getZoom() <= map.getMinZoom();
       applyCamera(cameraBounds, frame);
+      placeCellCardAboveAttribution();
     });
 
     // Panes dedicados, de z-index fixo: a ordem das camadas não pode depender
@@ -194,6 +196,8 @@
     });
   }
 
+  window.APP.pointInRings = pointInRings;
+
   // rings === null: mostra todas as etiquetas (vista nacional).
   function showPlaceLabelsWithin(rings) {
     placeLabels.forEach((label) => {
@@ -260,16 +264,40 @@
   };
 
   // Durante um zoom com a roda, uma vista nova seria desfeita no fim da animação,
-  // e o zoom ainda por aplicar correria depois dela. Usa campos internos do
-  // Leaflet (fixo na 1.9.4, ver index.html).
+  // e o zoom ainda por aplicar correria depois dela. O Leaflet só começa a animação
+  // na frame seguinte, por isso uma que arranque logo a seguir também conta. Só o
+  // último pedido conta. Usa campos internos do Leaflet (fixo na 1.9.4, ver
+  // index.html).
+  let settledCallback = null;
+  let lateZoomTimer = null;
+
+  function onZoomSettled() {
+    window.APP.map.off("zoomend", onZoomSettled);
+    settledCallback();
+  }
+
+  function onLateZoom() {
+    window.APP.map.off("zoomanim", onLateZoom);
+    window.APP.map.on("zoomend", onZoomSettled);
+  }
+
   function whenZoomSettled(callback) {
     const map = window.APP.map;
     const wheel = map.scrollWheelZoom;
     clearTimeout(wheel._timer);
     wheel._delta = 0;
     wheel._startTime = null;
-    if (map._animatingZoom) map.once("zoomend", callback);
-    else callback();
+    settledCallback = callback;
+    clearTimeout(lateZoomTimer);
+    map.off("zoomanim", onLateZoom);
+    map.off("zoomend", onZoomSettled);
+    if (map._animatingZoom) {
+      map.on("zoomend", onZoomSettled);
+      return;
+    }
+    callback();
+    map.on("zoomanim", onLateZoom);
+    lateZoomTimer = setTimeout(() => map.off("zoomanim", onLateZoom), LATE_ZOOM_MS);
   }
 
   // Grelha ClimateEU — mesmo padrão de 2 pedidos (meta depois GeoJSON) já
@@ -348,6 +376,7 @@
     if (cellMarker) window.APP.map.removeLayer(cellMarker);
     cellMarker = null;
     window.APP.hideCellCard();
+    if (window.APP.onCellCleared) window.APP.onCellCleared();
   };
 
   // Cartão num canto do mapa, em vez de um popup no ponto: com a câmara presa, o
@@ -365,10 +394,19 @@
     },
   });
 
+  // A atribuição ocupa 1 a 5 linhas, conforme a largura do mapa e o mapa de fundo:
+  // o cartão fica sempre acima dela, para não tapar os créditos nem ser tapado.
+  function placeCellCardAboveAttribution() {
+    if (!cellCard) return;
+    const attribution = window.APP.map.attributionControl.getContainer();
+    cellCard.getContainer().style.marginBottom = `${attribution.offsetHeight + 6}px`;
+  }
+
   window.APP.showCellCard = function showCellCard(html) {
     const element = cellCard.getContainer();
     element.innerHTML = html;
     element.hidden = false;
+    placeCellCardAboveAttribution();
   };
 
   window.APP.hideCellCard = function hideCellCard() {
@@ -405,6 +443,7 @@
         if (layer.feature.properties.codigo !== focusedRegionCode) layer.setStyle(nuts2DefaultStyle());
       });
     }
+    placeCellCardAboveAttribution();
     if (window.APP.onBasemapChanged) window.APP.onBasemapChanged();
   };
 

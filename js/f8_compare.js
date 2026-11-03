@@ -11,14 +11,18 @@
   let regionClip = null;
   let clippedRings = null;
   let caption = null;
+  let mainCaption = null;
   let latestRequest = 0;
+  let placeLabels = [];
+  let cellMarker = null;
+  let chosenCell = null;
 
   const scenarioSelect = () => document.getElementById("ctl-compare-scenario");
   const periodSelect = () => document.getElementById("ctl-compare-period");
   const isActive = () => document.getElementById("ctl-compare").checked;
 
   const Caption = L.Control.extend({
-    options: { position: "topright" },
+    options: { position: "topleft" }, // à esquerda não há controlos neste mapa
     onAdd() {
       return L.DomUtil.create("div", "compare-caption");
     },
@@ -35,7 +39,9 @@
   }
 
   function followMainMap() {
+    if (compareMap._animatingZoom) return;
     const main = window.APP.map;
+    if (compareMap.getZoom() === main.getZoom() && compareMap.getCenter().equals(main.getCenter(), 1e-7)) return;
     compareMap.setView(main.getCenter(), main.getZoom(), { animate: false });
   }
 
@@ -51,14 +57,49 @@
       boxZoom: false,
       keyboard: false,
       zoomSnap: 0,
-      zoomAnimation: false,
       fadeAnimation: false,
     });
     compareMap.createPane("compareRasterPane").style.zIndex = 410;
+    compareMap.createPane("compareMarkerPane").style.zIndex = 440;
+    const labelsPane = compareMap.createPane("compareLabelsPane");
+    labelsPane.style.zIndex = 450;
+    labelsPane.style.pointerEvents = "none";
+    placeLabels = window.APP.PLACE_LABELS.map(([name, lat, lng]) =>
+      L.tooltip({ permanent: true, direction: "right", pane: "compareLabelsPane", className: "place-label", offset: [4, 0], interactive: false })
+        .setLatLng([lat, lng])
+        .setContent(name)
+        .addTo(compareMap)
+    );
+    compareMap.on("zoomend", () => {
+      labelsPane.style.display = compareMap.getZoom() < window.APP.MIN_LABELS_ZOOM ? "none" : "";
+    });
     caption = new Caption().addTo(compareMap);
+    // Com 2 mapas, cada um diz o que mostra. No principal, à direita: à esquerda está o zoom.
+    mainCaption = new Caption({ position: "topright" }).addTo(window.APP.map);
     followMainMap();
-    window.APP.map.on("move zoom", followMainMap);
+    // Cada passo de pinça obrigaria a reprojetar as isobandas deste mapa: segue só
+    // no fim do gesto, e sem comparação não segue.
+    window.APP.map.on("move zoom zoomend", (e) => {
+      if (!e.pinch && isActive()) followMainMap();
+    });
+    // O zoom da roda e dos botões anima em simultâneo nos 2 mapas.
+    window.APP.map.on("zoomanim", (e) => {
+      if (isActive()) compareMap.setView(e.center, e.zoom, { animate: true });
+    });
+    compareMap.on("zoomend", () => {
+      if (isActive()) followMainMap();
+    });
     window.APP.map.on("resize", window.APP.invalidateCompare);
+    showChosenCell();
+  }
+
+  // O mesmo ponto nos 2 mapas, para comparar o mesmo sítio.
+  function showChosenCell() {
+    if (!compareMap) return;
+    if (cellMarker) compareMap.removeLayer(cellMarker);
+    cellMarker = chosenCell
+      ? L.circleMarker([chosenCell.lat, chosenCell.lng], { ...window.APP.CELL_MARKER_STYLE, pane: "compareMarkerPane" }).addTo(compareMap)
+      : null;
   }
 
   window.APP.invalidateCompare = function invalidateCompare() {
@@ -79,6 +120,10 @@
     if (regionClip) regionClip.remove();
     regionClip = rings ? window.APP.createRegionClip(compareMap, rings, "region-clip-compare", "compareRasterPane") : null;
     clippedRings = rings;
+    placeLabels.forEach((label) => {
+      const { lat, lng } = label.getLatLng();
+      label.setOpacity(!rings || window.APP.pointInRings(lat, lng, rings) ? 1 : 0);
+    });
   }
 
   async function renderRaster() {
@@ -86,7 +131,6 @@
     const scenario = scenarioSelect().value;
     const period = periodSelect().value;
     const request = ++latestRequest;
-    caption.getContainer().textContent = `${window.APP.SCENARIO_LABELS[scenario]}, ${window.APP.PERIOD_LABELS[period]}`;
     try {
       const metaRes = await fetch(`${window.APP.API_BASE}/raster/${indicator}/${scenario}/${period}`);
       if (!metaRes.ok) throw new Error(`compare raster: HTTP ${metaRes.status}`);
@@ -100,6 +144,8 @@
         interactive: false,
         style: window.APP.rasterStyle,
       }).addTo(compareMap);
+      // Só agora: se o pedido falhar, a legenda continua a dizer o que o mapa mostra.
+      caption.getContainer().textContent = `${window.APP.SCENARIO_LABELS[scenario]}, ${window.APP.PERIOD_LABELS[period]}`;
     } catch (err) {
       console.error(err);
       if (request === latestRequest) window.APP.showError("Não foi possível carregar o mapa de comparação. Recarrega a página para tentar outra vez.");
@@ -109,6 +155,8 @@
   // Chamada por f7_main.js::refresh a cada mudança de seleção.
   window.APP.updateCompare = function updateCompare() {
     if (!isActive() || !compareMap) return;
+    const { scenario, period } = window.APP.getSelection();
+    mainCaption.getContainer().textContent = `${window.APP.SCENARIO_LABELS[scenario]}, ${window.APP.PERIOD_LABELS[period]}`;
     syncRegionClip();
     renderRaster();
   };
@@ -134,6 +182,15 @@
   window.APP.getCompareParam = () => (isActive() ? `${scenarioSelect().value}:${periodSelect().value}` : null);
 
   window.APP.initCompare = function initCompare(param) {
+    window.APP.onCellClick((cell) => {
+      chosenCell = cell;
+      showChosenCell();
+    });
+    window.APP.onCellCleared = () => {
+      chosenCell = null;
+      showChosenCell();
+    };
+
     const select = scenarioSelect();
     Object.entries(window.APP.SCENARIO_LABELS).forEach(([key, label]) => select.add(new Option(label, key)));
     select.value = "ssp585";

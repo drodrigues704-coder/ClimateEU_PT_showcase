@@ -180,17 +180,6 @@
       window.APP.syncUrl();
     });
 
-    if (urlState.cellId) {
-      const restoreCell = () => {
-        const { nuts2Code } = window.APP.getSelection();
-        const cell = window.APP.cellsIndex.find((candidate) => candidate.id === urlState.cellId);
-        if (nuts2Code && cell && cell.codigo !== nuts2Code) return;
-        window.APP.selectCellById(urlState.cellId);
-      };
-      if (window.APP.cellsIndex) restoreCell();
-      else window.APP.onCellsReady(restoreCell);
-    }
-
     // nuts2_display.geojson carrega de forma assíncrona (ver f2_map.js::initMap) —
     // se o utilizador mudar de região antes desse fetch terminar,
     // focusRegion/setRegionClip saem em silêncio (guarda de nuts2Layer) e
@@ -208,13 +197,30 @@
 
     // O aviso só sai numa mudança de seleção: limpá-lo no primeiro refresh
     // apagava os avisos de arranque (grelha de pontos ou limites por carregar).
+    // Depois de a comparação encolher o mapa principal, que a mudança de tamanho
+    // desloca: a vista da ligação é a medida já com os 2 mapas.
     window.APP.initCompare(urlState.compare);
+    if (urlState.view && urlState.compare) {
+      window.APP.map.setView([urlState.view.lat, urlState.view.lng], urlState.view.zoom, { animate: false });
+    }
+
+    if (urlState.cellId) {
+      const restoreCell = () => {
+        const { nuts2Code } = window.APP.getSelection();
+        const cell = window.APP.cellsIndex.find((candidate) => candidate.id === urlState.cellId);
+        if (nuts2Code && cell && cell.codigo !== nuts2Code) return;
+        window.APP.selectCellById(urlState.cellId);
+      };
+      if (window.APP.cellsIndex) restoreCell();
+      else window.APP.onCellsReady(restoreCell);
+    }
 
     window.APP.onSelectionChange(() => {
       window.APP.hideError();
       return refresh();
     });
     window.APP.map.on("moveend", window.APP.syncUrl);
+    window.APP.map.on("resize", window.APP.syncUrl); // pode voltar a enquadrar
     await refresh();
   }
 
