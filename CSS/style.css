@@ -71,7 +71,7 @@ body {
   white-space: nowrap;
   align-self: center;
 }
-#ctl-basemap { margin-left: auto; } /* empurra os dois botões para a direita do cabeçalho */
+#ctl-basemap { margin-left: auto; } /* empurra o seletor e o botão para a direita do cabeçalho */
 
 /* Três colunas lado a lado: controlos | mapa | gráficos. Antes era
    sidebar+mapa em cima e um único gráfico a toda a largura em baixo — com
@@ -596,7 +596,7 @@ label { font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom
    LOCALIDADES, PONTO ESCOLHIDO, ACESSIBILIDADE
    ============================================================================= */
 
-/* Branco com contorno escuro: tem de se ler sobre as 8 rampas e os 2 basemaps. */
+/* Branco com contorno escuro: tem de se ler sobre as 8 rampas e os 4 basemaps. */
 .leaflet-tooltip.place-label {
   background: transparent;
   border: none;

@@ -80,11 +80,12 @@ window.APP = {
       tiles: [
         {
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+          attribution: "Tiles © Esri — Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community",
           maxNativeZoom: 18,
         },
         {
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          attribution: "Esri, HERE, Garmin, © OpenStreetMap contributors, and the GIS user community",
           maxNativeZoom: 18,
         },
       ],

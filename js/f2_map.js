@@ -1,5 +1,5 @@
 // ============================================================================
-// F2_MAP.JS — mapa base, alternância de basemap, contorno NUTS II.
+// F2_MAP.JS — mapa base, escolha de basemap, contorno NUTS II.
 // ============================================================================
 
 (function () {
